@@ -57,6 +57,7 @@ class Retrieval:
     bounds: dict[str, list[str]]
     gaps: list[str]
     out_of_scope: bool
+    scores: dict[str, float]  # match score for every test in `tests` and `bounds`
 
 
 def families(text: str | None) -> set[str]:
@@ -225,6 +226,7 @@ def retrieve(question: str, conditions: Conditions | None = None) -> Retrieval:
                       diluents, named])
     tests: list[tuple[dict, float]] = []
     bounds = {"microgravity": [], "earth": []}
+    scores: dict[str, float] = {}
     def scored(g: float | None) -> list[tuple[dict, float]]:
         out = [(r, score(r, c, g, diluents, r["test_id"] in mat_ids)) for r in candidates]
         if named and not any(s for _, s in out):  # only an investigation was named
@@ -236,6 +238,9 @@ def retrieve(question: str, conditions: Conditions | None = None) -> Retrieval:
         ranked = scored(None)  # bounds ignore gravity: best 0 g and best 1 g matches
         bounds = {"microgravity": [r["test_id"] for r, _ in ranked if r["gravity_g"] == 0][:TOP_BOUNDS],
                   "earth": [r["test_id"] for r, _ in ranked if r["gravity_g"] == 1][:TOP_BOUNDS]}
+        bound_ids = set(bounds["microgravity"] + bounds["earth"])
+        scores = {r["test_id"]: round(s, 2) for r, s in ranked if r["test_id"] in bound_ids}
+        scores.update({r["test_id"]: s for r, s in tests})
 
     label = c.material or ""
     return Retrieval(
@@ -245,4 +250,5 @@ def retrieve(question: str, conditions: Conditions | None = None) -> Retrieval:
         bounds=bounds,
         gaps=_gaps(c, mat if c.material else rows, label),
         out_of_scope=bool(OUT_OF_SCOPE.search(question)),
+        scores=scores,
     )

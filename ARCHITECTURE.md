@@ -202,6 +202,7 @@ Freeze this in Phase 1 so the web app can be built against sample responses (`we
 | GET | `/investigations` | All records from `investigations.json` |
 | GET | `/tests?investigation=&material=&o2_min=&o2_max=` | Filtered rows from `tests.csv` |
 | GET | `/coverage` | Points for the map: `test_id`, `o2_pct`, `pressure_kpa`, `gravity_g`, `investigation` |
+| GET | `/chunks` | Text sources a claim can cite: `chunk_id`, `source_id`, `title`, `source_url` (for citation chips) |
 
 ---
 
@@ -247,6 +248,7 @@ Also always return **bounding tests**: the best 0 g matches and best 1 g matches
   - Copy numbers exactly from evidence; no rounding beyond one decimal.
   - If gravity asked is Moon or Mars, say there is no direct PSI data and describe the 0 g and 1 g bounds.
   - If nothing matches, return no claims.
+- If Gemini is unavailable, or none of its claims survive `verify.py`, `answer.template()` restates the top evidence rows as claims ("At 0 g, BASS-II test BASS2-B1 (…) was extinguished at 21% O2."). These go through `verify.py` like any other draft, and the summary says it is showing evidence only.
 
 ### 7.3 Verification (`verify.py`) — the core of the project
 
@@ -258,8 +260,11 @@ For each claim:
 
 Then decide the status:
 
-- 0 claims left → `no_direct_data` (or `out_of_scope` if the question is about rockets/propellants)
-- ≥1 claim left → `answered`
+- Rockets/propellants → `out_of_scope` (the LLM is not called)
+- Moon/Mars gravity, a data gap at the asked conditions, or 0 claims left → `no_direct_data`
+- otherwise (≥1 claim at matching conditions) → `answered`
+
+The summary is checked too: every number in it must come from the evidence, the gaps or the question, or it is replaced. For `no_direct_data` and `out_of_scope` the summary is fixed text, so the "no direct data" message never depends on the LLM.
 
 Log every dropped claim and why (`logs/verify.jsonl`). This is great material for the demo and the slides.
 

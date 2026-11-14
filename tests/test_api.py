@@ -4,9 +4,10 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from api.main import FIXTURES, app
+from api.main import app
 from api.schemas import AskRequest, AskResponse
 
+FIXTURES = Path(__file__).resolve().parent.parent / "web" / "fixtures"
 client = TestClient(app)
 
 
