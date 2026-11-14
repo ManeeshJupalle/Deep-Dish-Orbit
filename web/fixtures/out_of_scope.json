@@ -1,0 +1,15 @@
+{
+  "status": "out_of_scope",
+  "summary": "Sample response for UI work. FlameCheck answers from NASA PSI fire-safety experiments on materials in spacecraft. Rocket engines and propellants are outside that data.",
+  "claims": [],
+  "evidence": [],
+  "bounds": {
+    "microgravity": [],
+    "earth": []
+  },
+  "trust": {
+    "level": "low",
+    "reason": "Question is outside the PSI fire-safety data"
+  },
+  "gaps": ["PSI does not cover rockets or propellants"]
+}

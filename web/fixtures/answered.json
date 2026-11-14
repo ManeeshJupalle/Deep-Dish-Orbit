@@ -1,0 +1,55 @@
+{
+  "status": "answered",
+  "summary": "Sample response for UI work, not NASA data. In the sample tests, a PMMA sheet burned at 21% oxygen in microgravity.",
+  "claims": [
+    {
+      "text": "Sample: test SAMPLE-1 burned a PMMA sheet at 21.0% oxygen and 101.3 kPa at 0 g.",
+      "cites": ["SAMPLE-1"]
+    },
+    {
+      "text": "Sample: test SAMPLE-2 also burned PMMA at 21.0% oxygen.",
+      "cites": ["SAMPLE-2"]
+    }
+  ],
+  "evidence": [
+    {
+      "test_id": "SAMPLE-1",
+      "investigation": "SAMPLE",
+      "match_score": 0.91,
+      "o2_pct": 21.0,
+      "pressure_kpa": 101.3,
+      "gravity_g": 0,
+      "outcome": "burned",
+      "source_url": "https://example.com/sample-1"
+    },
+    {
+      "test_id": "SAMPLE-2",
+      "investigation": "SAMPLE",
+      "match_score": 0.84,
+      "o2_pct": 21.0,
+      "pressure_kpa": null,
+      "gravity_g": 0,
+      "outcome": "burned",
+      "source_url": "https://example.com/sample-2"
+    },
+    {
+      "test_id": "SAMPLE-3",
+      "investigation": "SAMPLE",
+      "match_score": 0.52,
+      "o2_pct": 17.0,
+      "pressure_kpa": 101.3,
+      "gravity_g": 0,
+      "outcome": "extinguished",
+      "source_url": "https://example.com/sample-3"
+    }
+  ],
+  "bounds": {
+    "microgravity": ["SAMPLE-1", "SAMPLE-2"],
+    "earth": []
+  },
+  "trust": {
+    "level": "medium",
+    "reason": "Sample: 2 matching tests, same material and oxygen"
+  },
+  "gaps": ["Sample: no test above 30% O2 for this material"]
+}

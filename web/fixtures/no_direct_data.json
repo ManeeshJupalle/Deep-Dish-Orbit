@@ -1,0 +1,35 @@
+{
+  "status": "no_direct_data",
+  "summary": "Sample response for UI work, not NASA data. NASA PSI has no fire tests at lunar gravity. The closest data come from microgravity tests, which only bound the answer.",
+  "claims": [
+    {
+      "text": "Sample: at 0 g, test SAMPLE-4 burned cotton fabric at 21.0% oxygen.",
+      "cites": ["SAMPLE-4"]
+    }
+  ],
+  "evidence": [
+    {
+      "test_id": "SAMPLE-4",
+      "investigation": "SAMPLE",
+      "match_score": 0.63,
+      "o2_pct": 21.0,
+      "pressure_kpa": 101.3,
+      "gravity_g": 0,
+      "outcome": "burned",
+      "source_url": "https://example.com/sample-4"
+    }
+  ],
+  "bounds": {
+    "microgravity": ["SAMPLE-4"],
+    "earth": []
+  },
+  "trust": {
+    "level": "low",
+    "reason": "Sample: only a 0 g bounding test; oxygen 13 points lower than asked"
+  },
+  "gaps": [
+    "No PSI data at lunar gravity",
+    "Sample: no test above 30% O2 for cotton",
+    "Sample: no 1 g comparison test for cotton"
+  ]
+}

@@ -1,0 +1,22 @@
+# secrets
+.env
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# raw PSI downloads (large, re-downloadable)
+data/raw/
+
+# node
+node_modules/
+.next/
+
+# runtime logs
+logs/*.jsonl
+.claude/scheduled_tasks.lock
+
+# personal planning doc (has handle + venue notes); keep out of the public repo
+FlameCheck_Build_Plan.pdf
