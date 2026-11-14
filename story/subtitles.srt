@@ -1,0 +1,28 @@
+1
+00:00:00,000 --> 00:00:03,000
+I'm Maneesh, team FlameCheck, Chicago.
+
+2
+00:00:03,000 --> 00:00:08,000
+A Moon base will run at 30% oxygen or more.
+NASA has no lunar-gravity fire data.
+
+3
+00:00:08,000 --> 00:00:14,000
+Ask a question and every sentence
+cites a NASA test.
+
+4
+00:00:14,000 --> 00:00:20,000
+Ask about the Moon and it says no direct data,
+and shows the tests on either side.
+
+5
+00:00:20,000 --> 00:00:26,000
+Here's everything NASA tested,
+and the Moon-base gap.
+
+6
+00:00:26,000 --> 00:00:30,000
+Scored 20 of 20 on our test set.
+Every claim traces to NASA.
