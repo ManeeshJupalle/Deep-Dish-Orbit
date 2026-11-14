@@ -228,14 +228,14 @@ sequenceDiagram
 
 Two lanes, merged:
 
-1. **Structured lane (tests).** If the question has no `conditions`, extract them with a small Gemini call (material, O₂, pressure, gravity, flow). Score every row in `tests.csv`:
-   - material match (exact or same family) → biggest weight
+1. **Structured lane (tests).** Conditions typed in the form win; anything missing is parsed from the question with plain rules (material families, `N%` oxygen, pressure in kPa/psi/atm/mmHg/bar, `cm/s`, Moon/Mars/ISS/Earth words). No LLM is used here, so a condition can only come from words the user typed. Named investigations (e.g. "FLEX") filter the rows; named diluents (helium, CO₂, N₂) add a scoring term. Score every row in `tests.csv`:
+   - material match (same family, e.g. SIBAL = cotton, BASS-II rods = PMMA) → biggest weight; when the material has tests, only those rows are candidates
    - closeness in O₂, pressure, flow → smaller weights, normalized 0–1
    - rows missing a value get no credit for that field (never assumed)
    - keep the top 8 as `evidence`
-2. **Text lane (chunks).** Embed the question, cosine-similarity against `embeddings.npy`, keep the top 5 chunks.
+2. **Text lane (chunks).** Embed the question, cosine-similarity against `embeddings.npy`, keep the top 5 chunks. If embeddings or the Gemini key are missing, rank chunks by keyword overlap instead.
 
-Also always return **bounding tests**: the best 0 g matches and best 1 g matches, used when the user asks about Moon or Mars gravity.
+Also always return **bounding tests**: the best 0 g matches and best 1 g matches, used when the user asks about Moon or Mars gravity. `gaps` are computed from the data here too (e.g. "No cotton test at or above 34% O2 (highest tested: 22.1%)"), not written by the LLM.
 
 ### 7.2 Answer (`answer.py`)
 
