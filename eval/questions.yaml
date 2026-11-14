@@ -1,0 +1,135 @@
+# FlameCheck test set. Expected answers come from data/clean/tests.csv, not memory.
+#
+# Checks per question (run_eval.py):
+#   expected_status   status must match
+#   must_cite         every listed test id must be cited
+#   cite_where        every cited test row must match these fields (material = family name,
+#                     diluent = contains), and at least one test must be cited
+#   must_contain      strings the answer must contain (values copied from tests.csv)
+#   must_not_contain  strings the answer must not contain (case-insensitive)
+#   bounds_required   both 0 g and 1 g bound lists must be non-empty
+
+- id: L1
+  kind: lookup
+  question: Which SAFFIRE-II sample was cotton-fiberglass (SIBAL) fabric?
+  expected_status: answered
+  must_cite: [SAFFIRE2-2-5]
+  cite_where: {investigation: SAFFIRE-II, material: cotton}
+
+- id: L2
+  kind: lookup
+  question: What was the microgravity flame spread rate of the cotton-fiberglass sample in SAFFIRE-II?
+  expected_status: answered
+  must_cite: [SAFFIRE2-2-5]
+  must_contain: ["2.1"]        # SAFFIRE2-2-5 spread_rate_mm_s
+
+- id: L3
+  kind: lookup
+  question: What oxygen level was BASS-II test BASS2-B1 run at?
+  expected_status: answered
+  must_cite: [BASS2-B1]
+  must_contain: ["22.2"]       # BASS2-B1 o2_pct
+
+- id: L4
+  kind: lookup
+  question: Which FLEX tests burned methanol at 34% oxygen?
+  expected_status: answered
+  cite_where: {investigation: FLEX, material: methanol, o2_pct: 34}
+
+- id: L5
+  kind: lookup
+  question: Which BASS-II tests used Nomex fabric?
+  expected_status: answered
+  cite_where: {investigation: BASS-II, material: Nomex}
+
+- id: L6
+  kind: lookup
+  question: What happened to the silicone samples in SAFFIRE-II?
+  expected_status: answered
+  cite_where: {investigation: SAFFIRE-II, material: silicone}
+
+- id: C1
+  kind: compare
+  question: How did the SAFFIRE-II cotton-fiberglass sample burn in microgravity compared with 1 g?
+  expected_status: answered
+  must_cite: [SAFFIRE2-2-5, SAFFIRE2-2-5-1G]
+
+- id: C2
+  kind: compare
+  question: How did heptane and methanol droplets compare at 21% oxygen in FLEX?
+  expected_status: answered
+  cite_where: {investigation: FLEX}
+
+- id: C3
+  kind: compare
+  question: How did PMMA rods compare with PMMA films in BASS-II at 17% oxygen?
+  expected_status: answered
+  cite_where: {investigation: BASS-II, material: PMMA}
+
+- id: C4
+  kind: compare
+  question: How did methanol droplets in FLEX behave at 21% versus 34% oxygen?
+  expected_status: answered
+  cite_where: {investigation: FLEX, material: methanol}
+
+- id: C5
+  kind: compare
+  question: How did SIBAL fabric burn in BASS-II at 18% compared with 21% oxygen?
+  expected_status: answered
+  cite_where: {investigation: BASS-II, material: cotton}
+
+- id: S1
+  kind: suppression
+  question: Which FLEX tests used helium to put out the flame?
+  expected_status: answered
+  cite_where: {investigation: FLEX, diluent: He}
+
+- id: S2
+  kind: suppression
+  question: Which FLEX methanol tests with carbon dioxide were extinguished?
+  expected_status: answered
+  cite_where: {investigation: FLEX, material: methanol, diluent: CO2}
+
+- id: S3
+  kind: suppression
+  question: Which FLEX heptane tests used helium?
+  expected_status: answered
+  cite_where: {investigation: FLEX, material: heptane, diluent: He}
+
+- id: S4
+  kind: suppression
+  question: Did carbon dioxide put out heptane droplets at 18% oxygen in FLEX?
+  expected_status: answered
+  cite_where: {investigation: FLEX, material: heptane, diluent: CO2}
+
+- id: N1
+  kind: no-data
+  question: How does cotton burn in lunar gravity?
+  expected_status: no_direct_data
+  bounds_required: true
+  must_not_contain: ["is safe", "will burn on the moon"]
+
+- id: N2
+  kind: no-data
+  question: Is Nomex safe at 34% oxygen on the Moon?
+  expected_status: no_direct_data
+  bounds_required: true
+  must_not_contain: ["is safe"]
+
+- id: N3
+  kind: no-data
+  question: Will PMMA burn on Mars at 30% oxygen?
+  expected_status: no_direct_data
+  bounds_required: true
+  must_not_contain: ["will burn on mars"]
+
+- id: N4
+  kind: no-data
+  question: Does Kapton burn at 21% oxygen in microgravity?
+  expected_status: no_direct_data
+  must_not_contain: ["kapton burned"]
+
+- id: N5
+  kind: no-data
+  question: How do rockets burn solid propellant?
+  expected_status: out_of_scope

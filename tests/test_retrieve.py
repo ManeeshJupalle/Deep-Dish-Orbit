@@ -73,3 +73,14 @@ def test_get_endpoints():
     points = client.get("/coverage").json()
     assert len(points) == len(store().tests)
     assert set(points[0]) == {"test_id", "o2_pct", "pressure_kpa", "gravity_g", "investigation"}
+
+
+def test_named_test_id_comes_first():
+    r = retrieve("What oxygen level was BASS-II test BASS2-T28a run at?")
+    assert r.tests[0][0]["test_id"] == "BASS2-T28a"
+
+
+def test_untested_material_is_a_gap_not_another_material():
+    r = retrieve("Does Kapton burn at 21% oxygen in microgravity?")
+    assert r.conditions.material == "kapton"
+    assert "No PSI test for kapton" in r.gaps

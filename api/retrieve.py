@@ -29,6 +29,10 @@ FAMILIES = {
     "heptane": r"heptane",
 }
 _FAMILY_RE = {k: re.compile(v, re.I) for k, v in FAMILIES.items()}
+# Common spacecraft materials with no test in these PSI tables. Naming one must produce a
+# "No PSI test for ..." gap, not an answer about some other material.
+OTHER_MATERIALS = re.compile(r"\b(kapton|teflon|ptfe|polyethylene|polyurethane|nylon|velcro|polyester|wool|"
+                             r"paper|cardboard|foam|aluminum|aluminium|titanium|polyimide|kevlar|rubber)\b", re.I)
 
 INVESTIGATIONS = {"BASS-II": r"bass", "SAFFIRE-II": r"saffire[- ]?(ii|2)\b", "SAFFIRE-III": r"saffire[- ]?(iii|3)\b",
                   "FLEX": r"\bflex\b"}
@@ -44,6 +48,7 @@ _PRESSURE = re.compile(r"(\d+(?:\.\d+)?)\s*(kpa|psia|psi|atm|mmhg|torr|bar)\b", 
 _FLOW = re.compile(r"(\d+(?:\.\d+)?)\s*cm\s*/\s*s", re.I)
 _OXYGEN = re.compile(r"oxygen|\bo2\b|o₂", re.I)
 _OTHER_GAS = re.compile(r"co2|carbon dioxide|helium|nitrogen|\bhe\b|\bn2\b", re.I)
+_TEST_ID = re.compile(r"\b[A-Za-z0-9]+(?:-[A-Za-z0-9]+)+\b")
 
 W = {"material": 0.5, "o2_pct": 0.25, "pressure_kpa": 0.15, "flow_cm_s": 0.1, "gravity": 0.15, "diluent": 0.3}
 SPAN = {"o2_pct": 10.0, "pressure_kpa": 50.0, "flow_cm_s": 20.0}
@@ -89,8 +94,9 @@ def parse_conditions(question: str) -> Conditions:
     p = _PRESSURE.search(question)
     f = _FLOW.search(question)
     gravity = next((g for g, rx in GRAVITY if re.search(rx, question, re.I)), None)
+    other = OTHER_MATERIALS.search(question)
     return Conditions(
-        material=", ".join(sorted(fams)) or None,
+        material=", ".join(sorted(fams)) or (other.group(1).lower() if other else None),
         o2_pct=_o2(question),
         pressure_kpa=round(float(p.group(1)) * TO_KPA[p.group(2).lower()], 1) if p else None,
         gravity=gravity,
@@ -233,8 +239,14 @@ def retrieve(question: str, conditions: Conditions | None = None) -> Retrieval:
             out = [(r, 1.0) for r, _ in out]
         return _rank(out, c)
 
+    # Tests named in the question (e.g. "BASS2-B1") always come first.
+    named_ids = {m.lower() for m in _TEST_ID.findall(question)}
+    pinned = [t for t in store().tests if t["test_id"].lower() in named_ids]
+    has_signal = has_signal or bool(pinned)
+
     if has_signal:
-        tests = [(r, round(s, 2)) for r, s in scored(gravity_g)[:TOP_TESTS]]
+        ranked_tests = [x for x in scored(gravity_g) if x[0] not in pinned]
+        tests = [(p, 1.0) for p in pinned] + [(r, round(s, 2)) for r, s in ranked_tests][:TOP_TESTS - len(pinned)]
         ranked = scored(None)  # bounds ignore gravity: best 0 g and best 1 g matches
         bounds = {"microgravity": [r["test_id"] for r, _ in ranked if r["gravity_g"] == 0][:TOP_BOUNDS],
                   "earth": [r["test_id"] for r, _ in ranked if r["gravity_g"] == 1][:TOP_BOUNDS]}

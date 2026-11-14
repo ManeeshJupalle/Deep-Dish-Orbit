@@ -28,4 +28,5 @@ Run from the repo root unless noted.
 - API: `uv run uvicorn api.main:app --reload --port 8000` (docs at http://localhost:8000/docs)
 - Web: `cd web && npm run dev` (http://localhost:3000)
 - Tests: `uv run pytest`
-- Eval: `TBD` (Phase 7)
+- Eval: `uv run python -m eval.run_eval` (in-process) or `uv run python -m eval.run_eval --url http://localhost:8000` → `eval/results.md`
+- Data: `uv run python -m pipeline.build_tests`, `uv run python -m pipeline.build_index`, `uv run python -m pipeline.check_data`

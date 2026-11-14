@@ -75,6 +75,9 @@ def template(r: Retrieval) -> dict:
         rows = [store().by_id[i] for i in r.bounds["microgravity"][:2] + r.bounds["earth"][:1]]
     else:
         rows = [t for t, _ in r.tests[:3]]
+        # Add NASA's closest 1 g comparison when there is one, so both gravities are stated.
+        if r.bounds["earth"] and not any(t["gravity_g"] == 1 for t in rows):
+            rows.append(store().by_id[r.bounds["earth"][0]])
     claims = []
     for t in rows:
         parts = [f"{t['investigation']} test {t['test_id']} ({t['material'] or 'material not given'})",
@@ -87,6 +90,8 @@ def template(r: Retrieval) -> dict:
         if t["flow_cm_s"] is not None:
             conds.append(f"{fmt(t['flow_cm_s'])} cm/s flow")
         text = " ".join(parts) + (f" at {', '.join(conds)}" if conds else "")
+        if t["spread_rate_mm_s"] is not None:
+            text += f", with a flame spread rate of {fmt(t['spread_rate_mm_s'])} mm/s"
         prefix = "At 0 g, " if t["gravity_g"] == 0 else "At 1 g, "
         claims.append({"text": prefix + text + ".", "cites": [t["test_id"]]})
     return {"summary": "", "claims": claims}
