@@ -4,6 +4,7 @@ draft() asks Gemini (temperature 0, JSON only, one retry on bad JSON). template(
 no-LLM fallback: it restates the top evidence rows. Both outputs go through verify.py.
 """
 import json
+from collections import Counter
 from pathlib import Path
 
 from api import llm
@@ -12,6 +13,7 @@ from api.retrieve import Retrieval, fmt
 SYSTEM = (Path(__file__).parent / "prompts" / "answer.md").read_text(encoding="utf-8")
 ROW_FIELDS = ("test_id", "investigation", "material", "sample_geometry", "o2_pct", "pressure_kpa", "diluent",
               "flow_cm_s", "gravity_g", "outcome", "spread_rate_mm_s", "extinction_note")
+STATS: Counter = Counter()  # gemini_ok / gemini_error / gemini_bad_json, read by eval/run_eval.py
 OUTCOME_TEXT = {"burned": "burned", "extinguished": "was extinguished", "no_ignition": "did not ignite",
                 "ignited": "ignited", "other": "is recorded with outcome 'other'"}
 
@@ -61,9 +63,12 @@ def draft(question: str, r: Retrieval) -> dict | None:
         except json.JSONDecodeError:
             continue
         except Exception:  # network, quota, auth: fall back to the template
+            STATS["gemini_error"] += 1
             return None
         if _valid(d):
+            STATS["gemini_ok"] += 1
             return d
+    STATS["gemini_bad_json"] += 1
     return None
 
 

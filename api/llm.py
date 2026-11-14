@@ -8,8 +8,12 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-CHAT_MODEL = os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"
+# Comma-separated: the first model is used; the next ones are tried if it is overloaded or fails.
+CHAT_MODELS = [m.strip() for m in (os.getenv("GEMINI_MODEL") or "gemini-3.8-flash,gemini-3.7-flash").split(",")
+               if m.strip()]
+CHAT_MODEL = CHAT_MODELS[0]
 EMBED_MODEL = os.getenv("GEMINI_EMBED_MODEL") or "gemini-embedding-001"
+TIMEOUT_MS = 20_000  # per request; keeps /ask from hanging on an overloaded model
 
 
 def available() -> bool:
@@ -19,7 +23,8 @@ def available() -> bool:
 @lru_cache(maxsize=1)
 def _client():
     from google import genai
-    return genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    from google.genai import types
+    return genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options=types.HttpOptions(timeout=TIMEOUT_MS))
 
 
 def embed(texts: list[str], task_type: str) -> np.ndarray:
@@ -35,11 +40,13 @@ def embed(texts: list[str], task_type: str) -> np.ndarray:
 
 
 def generate_json(system: str, prompt: str) -> str:
-    """One deterministic JSON-only completion. Returns the raw text."""
+    """One deterministic JSON-only completion, trying each model in CHAT_MODELS. Returns the raw text."""
     from google.genai import types
-    resp = _client().models.generate_content(
-        model=CHAT_MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(system_instruction=system, temperature=0, response_mime_type="application/json"),
-    )
-    return resp.text or ""
+    config = types.GenerateContentConfig(system_instruction=system, temperature=0, response_mime_type="application/json")
+    error: Exception | None = None
+    for model in CHAT_MODELS:
+        try:
+            return _client().models.generate_content(model=model, contents=prompt, config=config).text or ""
+        except Exception as e:  # overloaded, timed out or unavailable: try the next model
+            error = e
+    raise error  # type: ignore[misc]

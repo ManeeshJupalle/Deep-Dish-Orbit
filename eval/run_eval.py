@@ -127,7 +127,13 @@ def main() -> None:
 
     passed = sum(all(c.values()) for _, _, c, _ in rows)
     per_check = {k: sum(c[k] for _, _, c, _ in rows) for k in CHECKS}
-    mode = f"Gemini ({llm.CHAT_MODEL})" if llm.available() else "evidence-only template (no GEMINI_API_KEY)"
+    mode = f"Gemini ({', '.join(llm.CHAT_MODELS)})" if llm.available() else "evidence-only template (no GEMINI_API_KEY)"
+    if llm.available() and not args.url:
+        from api.answer import STATS
+        drafted = STATS["gemini_ok"]
+        tried = drafted + STATS["gemini_error"] + STATS["gemini_bad_json"]
+        mode += (f"; Gemini drafted {drafted} of {tried} answers it was asked for "
+                 f"({STATS['gemini_error']} errors, {STATS['gemini_bad_json']} bad JSON fell back to evidence-only)")
     tick = lambda ok: "✅" if ok else "❌"
 
     lines = [
