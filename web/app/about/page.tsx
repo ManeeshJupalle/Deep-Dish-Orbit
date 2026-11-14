@@ -12,7 +12,7 @@ const SOURCES = [
 const STEPS = [
   { title: "Find the closest tests", body: "Your material, oxygen, pressure and gravity are matched against 423 NASA test rows. Missing values never earn credit." },
   { title: "Draft from evidence only", body: "Gemini writes short claims using only those rows and NASA text, each citing a test or document id." },
-  { title: "Verify every claim", body: "Any claim with an unknown citation, a number not in the cited row, or a Moon/Mars claim not stated as a 0 g or 1 g bound is dropped before you see it." },
+  { title: "Verify every claim", body: "Any claim with an unknown citation, a number not in the cited row, an outcome (\"burned\") the cited test doesn't record, or a Moon/Mars claim not stated as a 0 g or 1 g bound is dropped before you see it." },
   { title: "Answer, or say no direct data", body: "If nothing survives, or NASA never tested your conditions, FlameCheck says so and shows the tests that bound the answer." },
 ];
 
@@ -50,8 +50,9 @@ export default function AboutPage() {
         <p className="leading-relaxed">
           20 questions written from the data: 6 lookups, 5 comparisons, 4 suppression questions and 5 questions NASA has
           no data for. Each is scored on the right status, real citations, the required tests cited, and no invented
-          values. The first run scored <strong>17 of 20</strong>. After fixing the three failures, the evidence-only mode
-          scores <strong>20 of 20</strong>.
+          values. The first run scored <strong>17 of 20</strong>. After fixing the three failures, FlameCheck scores{" "}
+          <strong>20 of 20</strong> with Gemini drafting the answers, and 20 of 20 without it. During that run the
+          verifier removed 6 drafted claims that NASA&apos;s data did not back.
         </p>
       </section>
 

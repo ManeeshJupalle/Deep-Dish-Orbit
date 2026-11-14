@@ -2,6 +2,16 @@
 from api.retrieve import O2_NEAR, Retrieval, families, fmt
 
 
+def matches(t: dict, r: Retrieval) -> bool:
+    """Test row is at the asked conditions: same material family, O2 within 3 points, same gravity."""
+    c = r.conditions
+    want = families(c.material)
+    want_g = {"micro": 0.0, "earth": 1.0}.get(c.gravity or "")
+    return ((not want or bool(families(t["material"]) & want))
+            and (c.o2_pct is None or (t["o2_pct"] is not None and abs(t["o2_pct"] - c.o2_pct) <= O2_NEAR))
+            and (want_g is None or t["gravity_g"] == want_g))
+
+
 def trust(r: Retrieval, claims: list[dict], status: str, rows: dict[str, dict]) -> dict:
     c = r.conditions
     if status == "out_of_scope":
@@ -17,19 +27,14 @@ def trust(r: Retrieval, claims: list[dict], status: str, rows: dict[str, dict]) 
     if not cited:
         return {"level": "low", "reason": "Only text evidence, no test rows"}
 
-    want = families(c.material)
-    want_g = {"micro": 0.0, "earth": 1.0}.get(c.gravity or "")
-
-    def matches(t: dict) -> bool:
-        return ((not want or bool(families(t["material"]) & want))
-                and (c.o2_pct is None or (t["o2_pct"] is not None and abs(t["o2_pct"] - c.o2_pct) <= O2_NEAR))
-                and (want_g is None or t["gravity_g"] == want_g))
-
-    matching = [t for t in cited if matches(t)]
+    matching = [t for t in cited if matches(t, r)]
     n = len(matching)
-    if n >= 3 and not r.gaps:
-        return {"level": "high", "reason": f"{n} verified tests at matching conditions"}
+    with_outcome = sum(t["outcome"] is not None for t in matching)
+    if with_outcome >= 3 and not r.gaps:
+        return {"level": "high", "reason": f"{with_outcome} verified tests at matching conditions"}
     reason = f"{n} matching test{'s' if n != 1 else ''}" if n else "Tests near but not at the asked conditions"
+    if n and with_outcome < n:
+        reason += f", but NASA recorded no outcome for {n - with_outcome}"
     if c.o2_pct is not None:
         o2s = [t["o2_pct"] for t in cited if t["o2_pct"] is not None]
         if o2s:

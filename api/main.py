@@ -8,7 +8,7 @@ from api import answer
 from api.data import store
 from api.retrieve import Retrieval, material_rows, retrieve
 from api.schemas import AskRequest, AskResponse
-from api.trust import trust
+from api.trust import matches, trust
 from api.verify import decide_status, summary_ok, verify
 
 app = FastAPI(title="FlameCheck API")
@@ -21,6 +21,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+DROPPED_SUMMARY = ("Some drafted statements were removed because NASA's data does not back them. What remains is "
+                   "below, each with its NASA source.")
 OUT_OF_SCOPE_SUMMARY = ("FlameCheck answers from NASA PSI fire-safety experiments on materials and fuels in "
                         "spacecraft. Rockets and propellants are outside that data.")
 
@@ -63,7 +65,7 @@ def chunks() -> list[dict]:
     return [{k: c[k] for k in keys} for c in store().chunks]
 
 
-def _summary(status: str, r: Retrieval, llm_summary: str | None, claims: list[dict]) -> str:
+def _summary(status: str, r: Retrieval, llm_summary: str | None, claims: list[dict], dropped: bool) -> str:
     if status == "out_of_scope":
         return OUT_OF_SCOPE_SUMMARY
     if status == "no_direct_data":
@@ -77,6 +79,8 @@ def _summary(status: str, r: Retrieval, llm_summary: str | None, claims: list[di
         return "NASA PSI has no test that matches this question."
     if llm_summary:
         return llm_summary
+    if dropped:
+        return DROPPED_SUMMARY
     n = len({i for c in claims for i in c["cites"]})
     return f"Showing NASA PSI evidence only: {n} cited source{'s' if n != 1 else ''} below."
 
@@ -85,21 +89,28 @@ def _summary(status: str, r: Retrieval, llm_summary: str | None, claims: list[di
 def ask(req: AskRequest) -> AskResponse:
     r = retrieve(req.question, req.conditions)
     evidence = answer.evidence_rows(r)
+    rows = {t["test_id"]: t for t in evidence}
     claims: list[dict] = []
     llm_summary = None
+    dropped = False
     if not r.out_of_scope:
         draft = answer.draft(req.question, r)
         if draft:
-            claims = verify(req.question, r, evidence, draft["claims"]).claims
-            if claims and draft["summary"].strip() and summary_ok(draft["summary"], r, evidence, req.question):
+            v = verify(req.question, r, evidence, draft["claims"])
+            claims, dropped = v.claims, bool(v.dropped)
+            # The model's summary is shown only if every claim it drafted survived and it passes the checks.
+            if claims and not dropped and draft["summary"].strip() and summary_ok(
+                    draft["summary"], r, evidence, req.question, claims):
                 llm_summary = draft["summary"].strip()
-        if not claims:  # no LLM, or nothing it wrote survived: restate the evidence instead
-            claims = verify(req.question, r, evidence, answer.template(r)["claims"]).claims
+        # If no surviving claim cites a test at the asked conditions, also restate the closest tests.
+        if not any(matches(rows[i], r) for c in claims for i in c["cites"] if i in rows):
+            cited = {i for c in claims for i in c["cites"]}
+            extra = verify(req.question, r, evidence, answer.template(r)["claims"]).claims
+            claims += [c for c in extra if not set(c["cites"]) & cited]
     status = decide_status(r, claims)
-    rows = {t["test_id"]: t for t in evidence}
     return AskResponse.model_validate({
         "status": status,
-        "summary": _summary(status, r, llm_summary, claims),
+        "summary": _summary(status, r, llm_summary, claims, dropped),
         "claims": claims,
         "evidence": [] if status == "out_of_scope" else [
             {"test_id": t["test_id"], "investigation": t["investigation"],

@@ -113,12 +113,15 @@ def score(q: dict, d: dict) -> tuple[dict, list[str]]:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", help="score a running API instead of the in-process app")
+    ap.add_argument("--pause", type=float, default=0.0, help="seconds between questions (free-tier rate limits)")
     args = ap.parse_args()
 
     questions = yaml.safe_load((HERE / "questions.yaml").read_text(encoding="utf-8"))
     call = ask_fn(args.url)
     rows, times = [], []
-    for q in questions:
+    for i, q in enumerate(questions):
+        if i and args.pause:
+            time.sleep(args.pause)
         t0 = time.perf_counter()
         d = call(q["question"])
         times.append(time.perf_counter() - t0)

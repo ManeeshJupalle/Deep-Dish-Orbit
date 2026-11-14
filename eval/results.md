@@ -1,6 +1,6 @@
 # FlameCheck eval results
 
-Run: 2026-11-14 02:18 · Answer mode: evidence-only template (no GEMINI_API_KEY) · API: in-process · Median latency: 5 ms
+Run: 2026-11-14 14:13 · Answer mode: Gemini (gemini-3.5-flash-lite, gemini-3.1-flash-lite); Gemini drafted 19 of 19 answers it was asked for (0 errors, 0 bad JSON fell back to evidence-only) · API: in-process · Median latency: 1265 ms
 
 **Score: 20 of 20 questions pass every check.**
 

@@ -85,8 +85,29 @@ def test_status_rules():
 
 def test_summary_with_invented_number_is_rejected():
     r, ev, _, _ = setup("cotton fabric in a spacecraft")
-    assert summary_ok("The cotton-fiberglass fabric burned at 22.1% oxygen.", r, ev, "q")
-    assert not summary_ok("The fabric burned at 31.7% oxygen.", r, ev, "q")
+    claims = [{"text": "x", "cites": ["SAFFIRE2-2-5"]}]
+    assert summary_ok("The cotton-fiberglass fabric burned at 22.1% oxygen.", r, ev, "q", claims)
+    assert not summary_ok("The fabric burned at 31.7% oxygen.", r, ev, "q", claims)
+
+
+def test_outcome_words_must_match_recorded_outcomes():
+    r, ev, rows, chunks = setup("PMMA at 21% oxygen")
+    assert rows["BASS2-B6"]["outcome"] is None
+    # BASS-II table has no outcome for B6: "burned" is not backed by the data
+    assert check_claim({"text": "At 0 g, the PMMA film burned at 21% O2.", "cites": ["BASS2-B6"]}, rows, chunks, None)
+    assert check_claim({"text": "At 0 g, the PMMA film was tested at 21% O2.", "cites": ["BASS2-B6"]}, rows, chunks, None) is None
+
+
+def test_outcome_rule_on_flex_rows():
+    r, ev, rows, chunks = setup("Which FLEX tests used helium to put out the flame?")
+    ext = next(t for t in ev if t["outcome"] == "extinguished")
+    other = {"test_id": "FLEX-1", "outcome": "other", "gravity_g": 0.0, "o2_pct": 21.0}
+    rows = {**rows, ext["test_id"]: ext, "FLEX-1": other}
+    assert check_claim({"text": "At 0 g, the droplet flame was extinguished.", "cites": [ext["test_id"]]}, rows, chunks, None) is None
+    assert check_claim({"text": "At 0 g, the droplet burned.", "cites": [ext["test_id"]]}, rows, chunks, None)
+    assert check_claim({"text": "At 0 g, the droplet burned.", "cites": ["FLEX-1"]}, rows, chunks, None)
+    # measurements are not outcomes
+    assert check_claim({"text": "At 0 g, the burning rate was recorded.", "cites": ["FLEX-1"]}, rows, chunks, None) is None
 
 
 def test_ask_drops_injected_fake_claims(monkeypatch, tmp_log):

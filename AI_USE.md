@@ -4,8 +4,8 @@ Space Apps asks every team to say which AI tools they used and how.
 
 ## In the product
 
-- **Google Gemini** (Flash model, via the Gemini API) drafts answers from the retrieved NASA evidence only, at temperature 0, as JSON. Gemini embeddings index the NASA text for search.
-- Gemini output is never shown as-is. `api/verify.py` drops any claim that cites an unknown id, contains a number that is not in the cited NASA row or document, or describes Moon/Mars behavior without stating it as a 0 g or 1 g bound. The "no direct data" message is fixed text, not model output.
+- **Google Gemini** (`gemini-3.5-flash-lite`, with `gemini-3.1-flash-lite` as backup, via the Gemini API free tier) drafts answers from the retrieved NASA evidence only, at temperature 0, as JSON. `gemini-embedding-001` embeds the NASA text for search.
+- Gemini output is never shown as-is. `api/verify.py` drops any claim that cites an unknown id, contains a number that is not in the cited NASA row or document, states an outcome ("burned", "extinguished") the cited test doesn't record, or describes Moon/Mars behavior without stating it as a 0 g or 1 g bound. If any claim is dropped, the model's summary is replaced by a plain note. The "no direct data" message is fixed text, not model output.
 - Without a Gemini key, FlameCheck runs in evidence-only mode: it restates the closest NASA test rows, checked by the same verifier.
 
 ## In building it

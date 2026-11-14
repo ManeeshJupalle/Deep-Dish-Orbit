@@ -24,6 +24,17 @@ ZERO_G = re.compile(r"\b0\s?g\b|micro-?gravity|[µμ]-?g\b", re.I)
 ONE_G = re.compile(r"\b1\s?g\b|1-g\b|normal gravity|earth gravity|\bon earth\b", re.I)
 MOON_MARS = re.compile(r"\bmoon\b|lunar|\bmars\b|martian", re.I)
 
+# Outcome words a claim may only use when the cited rows' `outcome` column backs them.
+MEASURES = re.compile(r"burn(?:ing)?[- ](?:rate|time|length|duration)|extinction diameter|spread (?:rate|length)", re.I)
+OUTCOME_WORDS = [  # order matters: "did not ignite" is removed before "ignite" is looked for
+    ("no_ignition", re.compile(r"(?:did|does|would) not ignite|failed to ignite|no ignition|not ignite", re.I)),
+    ("extinguished", re.compile(r"extinguish|extinction|put out|went out|blow-?off|quench", re.I)),
+    ("burned", re.compile(r"\bburn(?:ed|t|s|ing)?\b", re.I)),
+    ("ignited", re.compile(r"\bignit(?:ed|es|ion)\b", re.I)),
+]
+ALLOWED = {"no_ignition": {"no_ignition"}, "extinguished": {"extinguished"}, "burned": {"burned"},
+           "ignited": {"ignited", "burned", "extinguished"}}
+
 
 @dataclass
 class Verified:
@@ -49,6 +60,28 @@ def number_ok(n: float, allowed: set[float]) -> bool:
     return any(abs(n - v) < 1e-9 or round(n, 1) == round(v, 1) for v in allowed)
 
 
+def outcome_problem(text: str, tests: list[dict]) -> str | None:
+    """Outcome words (burned, extinguished, ...) must match the cited tests' recorded outcomes."""
+    if not tests:
+        return None
+    t = MEASURES.sub(" ", text)
+    said = []
+    for name, rx in OUTCOME_WORDS:
+        if rx.search(t):
+            said.append(name)
+            t = rx.sub(" ", t)
+    if not said:
+        return None
+    for name in said:
+        if not any(r["outcome"] in ALLOWED[name] for r in tests):
+            return f"says '{name}' but no cited test records that outcome"
+    allowed = set().union(*(ALLOWED[n] for n in said))
+    wrong = [r["test_id"] for r in tests if r["outcome"] not in allowed]
+    if wrong:
+        return f"says {said} but {wrong} record a different or no outcome"
+    return None
+
+
 def check_claim(claim: dict, rows: dict[str, dict], chunks: dict[str, dict], gravity: str | None) -> str | None:
     """Reason the claim must be dropped, or None if it passes."""
     cites = claim.get("cites") or []
@@ -64,6 +97,10 @@ def check_claim(claim: dict, rows: dict[str, dict], chunks: dict[str, dict], gra
     bad = [n for n in numbers(claim["text"]) if not number_ok(n, allowed)]
     if bad:
         return f"number(s) {bad} not in cited evidence"
+
+    problem = outcome_problem(claim["text"], [rows[c] for c in cites if c in rows])
+    if problem:
+        return problem
 
     if gravity in ("moon", "mars"):
         levels = {rows[c]["gravity_g"] for c in cites if c in rows}
@@ -92,14 +129,18 @@ def verify(question: str, r: Retrieval, evidence: list[dict], draft_claims: list
     return result
 
 
-def summary_ok(summary: str, r: Retrieval, evidence: list[dict], question: str) -> bool:
-    """Every number in the summary must come from the evidence, the gaps or the question."""
+def summary_ok(summary: str, r: Retrieval, evidence: list[dict], question: str, claims: list[dict]) -> bool:
+    """Numbers must come from the evidence, gaps or question; outcome words must match the cited tests."""
     allowed = set(numbers(question)) | {n for g in r.gaps for n in numbers(g)}
     for t in evidence:
         allowed |= row_numbers(t)
     for c, _ in r.chunks:
         allowed |= set(numbers(c["text"]))
-    return all(number_ok(n, allowed) for n in numbers(summary))
+    if not all(number_ok(n, allowed) for n in numbers(summary)):
+        return False
+    rows = {t["test_id"]: t for t in evidence}
+    cited = list({i: rows[i] for c in claims for i in c["cites"] if i in rows}.values())
+    return outcome_problem(summary, cited) is None
 
 
 def decide_status(r: Retrieval, claims: list[dict]) -> str:

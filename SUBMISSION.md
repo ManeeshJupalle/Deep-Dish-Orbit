@@ -26,10 +26,10 @@ FlameCheck turns four PSI investigations (BASS-II, SAFFIRE-II, SAFFIRE-III, FLEX
 
 1. finds the closest NASA tests (missing values never earn credit) and the best 0 g and 1 g bounding tests;
 2. asks Gemini to draft short claims from that evidence only, each citing a test or NASA document;
-3. runs every claim through a verifier that drops unknown citations, numbers not in the cited row, and Moon/Mars claims not stated as 0 g or 1 g bounds;
+3. runs every claim through a verifier that drops unknown citations, numbers not in the cited row, outcomes ("burned") the cited test doesn't record, and Moon/Mars claims not stated as 0 g or 1 g bounds;
 4. returns a cited answer with a High/Medium/Low trust badge, the ranked evidence with links to each PSI page, and the gaps computed from the data. If nothing matches, it says "no direct data".
 
-On a 20-question test set written from the data (lookups, comparisons, suppression, no-data), the first run scored 17/20 and the current version scores _20/20 (evidence-only mode); add the Gemini-mode score_. Built with Python, FastAPI, Next.js and Gemini.
+On a 20-question test set written from the data (lookups, comparisons, suppression, no-data), the first run scored 17/20. The current version scores 20/20 with Gemini drafting the answers, and the verifier removed 6 drafted claims the data did not back. Built with Python, FastAPI, Next.js and Gemini.
 
 ## NASA data used
 
@@ -46,8 +46,9 @@ Google Gemini drafts answers from retrieved NASA evidence and embeds NASA text f
 
 ## Before you click Submit
 
-- [ ] Gemini key in `.env` (local) and on Render; `uv run python -m pipeline.build_index` run to create embeddings
-- [ ] `uv run python -m eval.run_eval` re-run in Gemini mode; score updated in README, About page, video and this file
+- [x] Gemini key in `.env` (local); embeddings built
+- [x] Eval re-run in Gemini mode (20/20); score updated in README, About page, video and this file
+- [ ] Gemini key added on Render
 - [ ] Repo public on GitHub; `.env` not committed
 - [ ] API deployed (Render) and web deployed (Vercel), `ALLOWED_ORIGINS` and `NEXT_PUBLIC_API_URL` set
 - [ ] Live link opened in a private window on a phone; 3 questions asked

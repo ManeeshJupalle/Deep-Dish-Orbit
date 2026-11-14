@@ -15,12 +15,13 @@ question ─► retrieve.py ─► answer.py (Gemini, evidence only) ─► veri
               │                                                    │
         tests.csv + NASA text                       drops any claim with an unknown citation,
         (closest tests, 0 g / 1 g bounds,           a number not in the cited row, or a Moon/Mars
-         gaps computed from the data)               claim not stated as a 0 g / 1 g bound
+         gaps computed from the data)               claim not stated as a 0 g / 1 g bound, or an
+                                                    outcome ("burned") the cited row doesn't record
 ```
 
 - Conditions are parsed from the question with plain rules, so a condition can only come from words the user typed.
 - Gaps ("No cotton test at or above 34% O2 (highest tested: 22.1%)") are computed from the data, not written by the model.
-- If Gemini is unavailable or none of its claims survive, FlameCheck restates the closest evidence rows instead. Those claims go through the same verifier.
+- If Gemini is unavailable, or no surviving claim cites a test at the asked conditions, FlameCheck restates the closest evidence rows. Those claims go through the same verifier. If any drafted claim is dropped, the model's summary is replaced by a plain note saying so.
 - Every dropped claim is logged to `logs/verify.jsonl`.
 
 ## Test-set score
@@ -29,9 +30,9 @@ question ─► retrieve.py ─► answer.py (Gemini, evidence only) ─► veri
 
 | Run | Score |
 | --- | --- |
-| First run (`eval/results_before_fixes.md`) | 17 / 20 |
-| After fixing the 3 failures, evidence-only mode (`eval/results.md`) | **20 / 20** |
-| Gemini mode | _run `uv run python -m eval.run_eval` with `GEMINI_API_KEY` set_ |
+| First run, evidence-only (`eval/results_before_fixes.md`) | 17 / 20 |
+| After fixing the 3 failures, evidence-only (`eval/results_evidence_only.md`) | 20 / 20 |
+| **Gemini mode** (`gemini-3.5-flash-lite`; Gemini drafted 19 of 19 answers; `verify.py` dropped 6 unsupported claims) (`eval/results.md`) | **20 / 20** |
 
 ## NASA data used
 

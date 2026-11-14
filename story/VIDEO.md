@@ -1,6 +1,6 @@
 # 30-second demo video
 
-Hard limit: 30 seconds, English subtitles (`subtitles.srt`). Record the live site at 1280×720. Re-run `uv run python -m eval.run_eval` with Gemini on before recording, and say the score it prints.
+Hard limit: 30 seconds, English subtitles (`subtitles.srt`). Record the live site at 1280×720. The score line uses the Gemini-mode eval (20/20, `eval/results.md`); re-run it if the code changes before recording.
 
 | Time | Screen | Voice-over (= subtitle) |
 | --- | --- | --- |

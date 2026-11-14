@@ -70,7 +70,7 @@ One team, one shared chat: everything above is built in a single track, in phase
 | --- | --- | --- |
 | Data | Python 3.11, pandas | Fast to clean messy tables |
 | API | FastAPI + Pydantic | Typed request/response, auto docs at `/docs` |
-| LLM | Gemini (Flash for speed) | $25 Google credits from the event |
+| LLM | Gemini 3.5 Flash-Lite (fallback 3.1 Flash-Lite), free tier | Fast (~1 s); full Flash models were overloaded on the free tier. AI Studio rejected the event credit's billing account type |
 | Embeddings | Gemini embeddings, stored in `embeddings.npy` | No vector DB needed for < 5,000 chunks |
 | Web | Next.js (App Router) + Tailwind + shadcn/ui | Fast, polished UI |
 | Charts | Recharts | Coverage map scatter plot |
@@ -248,7 +248,7 @@ Also always return **bounding tests**: the best 0 g matches and best 1 g matches
   - Copy numbers exactly from evidence; no rounding beyond one decimal.
   - If gravity asked is Moon or Mars, say there is no direct PSI data and describe the 0 g and 1 g bounds.
   - If nothing matches, return no claims.
-- If Gemini is unavailable, or none of its claims survive `verify.py`, `answer.template()` restates the top evidence rows as claims ("At 0 g, BASS-II test BASS2-B1 (…) was extinguished at 21% O2."). These go through `verify.py` like any other draft, and the summary says it is showing evidence only.
+- If Gemini is unavailable, or no surviving claim cites a test at the asked conditions, `answer.template()` restates the top evidence rows as claims ("At 0 g, BASS-II test BASS2-B1 (…) was extinguished at 21% O2."). These go through `verify.py` like any other draft. Requests time out after 20 s and fall through the model list in `GEMINI_MODEL`.
 
 ### 7.3 Verification (`verify.py`) — the core of the project
 
@@ -257,6 +257,7 @@ For each claim:
 1. Every id in `cites` must exist in the evidence or chunks sent. Unknown id → drop claim.
 2. Every number in the claim text must appear in a cited row or chunk (allow rounding to 1 decimal). Not found → drop claim.
 3. A claim about Moon/Mars behavior that cites only 0 g or 1 g data must be phrased as a bound ("at 0 g…", "at 1 g…"). Otherwise → drop claim.
+4. Outcome words ("burned", "ignited", "extinguished", "did not ignite") must match the `outcome` column of the cited tests; measurement phrases like "burning rate" don't count. An empty outcome backs no outcome word. Otherwise → drop claim.
 
 Then decide the status:
 
@@ -264,7 +265,7 @@ Then decide the status:
 - Moon/Mars gravity, a data gap at the asked conditions, or 0 claims left → `no_direct_data`
 - otherwise (≥1 claim at matching conditions) → `answered`
 
-The summary is checked too: every number in it must come from the evidence, the gaps or the question, or it is replaced. For `no_direct_data` and `out_of_scope` the summary is fixed text, so the "no direct data" message never depends on the LLM.
+The summary is checked too: every number in it must come from the evidence, the gaps or the question, and its outcome words must match the cited tests (rule 4), or it is replaced. If any drafted claim was dropped, the model's summary is not shown; a plain note says statements were removed. For `no_direct_data` and `out_of_scope` the summary is fixed text, so the "no direct data" message never depends on the LLM.
 
 Log every dropped claim and why (`logs/verify.jsonl`). This is great material for the demo and the slides.
 
@@ -272,7 +273,7 @@ Log every dropped claim and why (`logs/verify.jsonl`). This is great material fo
 
 | Level | Rule |
 | --- | --- |
-| High | 3+ verified tests, same material family, O₂ within 3 points, same gravity |
+| High | 3+ verified tests with a recorded outcome, same material family, O₂ within 3 points, same gravity |
 | Medium | 1–2 verified tests, or conditions near but not matching |
 | Low | Only bounding tests (e.g. Moon question), or only text evidence |
 

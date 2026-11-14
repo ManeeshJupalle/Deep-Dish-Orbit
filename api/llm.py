@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 # Comma-separated: the first model is used; the next ones are tried if it is overloaded or fails.
-CHAT_MODELS = [m.strip() for m in (os.getenv("GEMINI_MODEL") or "gemini-3.8-flash,gemini-3.7-flash").split(",")
+# Flash-Lite answers in under a second on the free tier; full Flash models were overloaded (503/504) when tested.
+CHAT_MODELS = [m.strip() for m in (os.getenv("GEMINI_MODEL") or "gemini-3.5-flash-lite,gemini-3.1-flash-lite").split(",")
                if m.strip()]
 CHAT_MODEL = CHAT_MODELS[0]
 EMBED_MODEL = os.getenv("GEMINI_EMBED_MODEL") or "gemini-embedding-001"
