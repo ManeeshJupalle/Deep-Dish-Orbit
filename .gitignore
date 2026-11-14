@@ -7,8 +7,10 @@ __pycache__/
 *.pyc
 .pytest_cache/
 
-# raw PSI downloads (large, re-downloadable)
-data/raw/
+# raw PSI downloads (large); the small experimental tables are kept so the pipeline can re-run
+data/raw/**
+!data/raw/**/
+!data/raw/**/*_experimental_table.csv
 
 # node
 node_modules/

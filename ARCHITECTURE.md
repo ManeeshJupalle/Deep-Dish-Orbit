@@ -80,7 +80,7 @@ One team, one shared chat: everything above is built in a single track, in phase
 
 ## 5. Data model
 
-All clean data lives in `data/clean/`. Raw downloads stay in `data/raw/` (git-ignored).
+All clean data lives in `data/clean/`. Raw downloads stay in `data/raw/` (git-ignored, except the small `*_experimental_table.csv` files, which are committed so the pipeline can be re-run).
 
 **Golden rule:** if a value is not in the NASA source, the cell is **empty (null)**. Never guess or fill in.
 
