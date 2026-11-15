@@ -92,11 +92,14 @@ def ask(req: AskRequest) -> AskResponse:
     claims: list[dict] = []
     llm_summary = None
     dropped = False
+    removed: list[dict] = []
     if not r.out_of_scope:
         draft = answer.draft(req.question, r)
         if draft:
             v = verify(req.question, r, evidence, draft["claims"])
             claims, dropped = v.claims, bool(v.dropped)
+            removed = [{"text": d["claim"].get("text", ""), "cites": d["claim"].get("cites") or [], "reason": d["reason"]}
+                       for d in v.dropped]
             # The model's summary is shown only if every claim it drafted survived and it passes the checks.
             if claims and not dropped and draft["summary"].strip() and summary_ok(
                     draft["summary"], r, evidence, req.question, claims):
@@ -119,4 +122,5 @@ def ask(req: AskRequest) -> AskResponse:
         "bounds": r.bounds if status != "out_of_scope" else {"microgravity": [], "earth": []},
         "trust": trust(r, claims, status, rows),
         "gaps": r.gaps if status != "out_of_scope" else ["PSI does not cover rockets or propellants"],
+        "dropped": removed,
     })

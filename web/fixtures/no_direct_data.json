@@ -31,5 +31,6 @@
     "No PSI data at lunar gravity",
     "Sample: no test above 30% O2 for cotton",
     "Sample: no 1 g comparison test for cotton"
-  ]
+  ],
+  "dropped": []
 }

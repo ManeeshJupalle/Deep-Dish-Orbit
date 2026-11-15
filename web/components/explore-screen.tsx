@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { CoverageMap } from "@/components/coverage-map";
+import { GapCube } from "@/components/gap-cube";
 import { InvestigationCompare } from "@/components/investigation-compare";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCoverage, getInvestigations, usingFixtures } from "@/lib/api";
@@ -37,6 +38,15 @@ export function ExploreScreen() {
   }
   return (
     <div className="space-y-10">
+      <section aria-labelledby="cube-heading" className="space-y-3">
+        <h2 id="cube-heading" className="text-xl font-bold tracking-tight">
+          Gap cube: oxygen × pressure × gravity
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Drag to turn it. NASA&apos;s tests can only sit on the 0 g and 1 g floors; the Moon and Mars slices are empty.
+        </p>
+        <GapCube points={points} />
+      </section>
       <section aria-labelledby="map-heading" className="space-y-3">
         <h2 id="map-heading" className="text-xl font-bold tracking-tight">
           Coverage map: oxygen vs pressure

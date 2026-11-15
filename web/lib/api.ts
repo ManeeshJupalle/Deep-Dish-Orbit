@@ -2,7 +2,7 @@
 import answered from "@/fixtures/answered.json";
 import noDirectData from "@/fixtures/no_direct_data.json";
 import outOfScope from "@/fixtures/out_of_scope.json";
-import type { AskRequest, AskResponse, ChunkInfo, CoveragePoint, Investigation } from "./types";
+import type { AskRequest, AskResponse, ChunkInfo, CoveragePoint, Investigation, TestRow } from "./types";
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 export const usingFixtures = API_URL === "";
@@ -41,3 +41,4 @@ export async function ask(req: AskRequest): Promise<AskResponse> {
 export const getChunks = () => (usingFixtures ? Promise.resolve([] as ChunkInfo[]) : get<ChunkInfo[]>("/chunks"));
 export const getCoverage = () => get<CoveragePoint[]>("/coverage");
 export const getInvestigations = () => get<Investigation[]>("/investigations");
+export const getTests = () => get<TestRow[]>("/tests");

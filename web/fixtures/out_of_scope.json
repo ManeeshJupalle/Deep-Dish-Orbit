@@ -11,5 +11,6 @@
     "level": "low",
     "reason": "Question is outside the PSI fire-safety data"
   },
-  "gaps": ["PSI does not cover rockets or propellants"]
+  "gaps": ["PSI does not cover rockets or propellants"],
+  "dropped": []
 }

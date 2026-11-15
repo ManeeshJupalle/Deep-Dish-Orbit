@@ -37,6 +37,11 @@ OUTCOME_WORDS = [  # order matters: "did not ignite" / "never burned" go before 
 ]
 ALLOWED = {"no_ignition": {"no_ignition"}, "extinguished": {"extinguished"}, "burned": {"burned"},
            "ignited": {"ignited", "burned", "extinguished"}}
+WORDS = {"no_ignition": "did not ignite", "extinguished": "extinguished", "burned": "burned", "ignited": "ignited"}
+
+
+def _ids(ids: list[str]) -> str:
+    return ", ".join(ids[:-1]) + " or " + ids[-1] if len(ids) > 1 else ids[0]
 
 
 @dataclass
@@ -78,11 +83,11 @@ def outcome_problem(text: str, tests: list[dict]) -> str | None:
         return None
     for name in said:
         if not any(r["outcome"] in ALLOWED[name] for r in tests):
-            return f"says '{name}' but no cited test records that outcome"
+            return f"says '{WORDS[name]}' but no cited test records that outcome"
     allowed = set().union(*(ALLOWED[n] for n in said))
     wrong = [r["test_id"] for r in tests if r["outcome"] not in allowed]
     if wrong:
-        return f"says {said} but {wrong} record a different or no outcome"
+        return f"says '{' / '.join(WORDS[n] for n in said)}' but {_ids(wrong)} recorded a different outcome or none"
     return None
 
 
@@ -90,17 +95,17 @@ def check_claim(claim: dict, rows: dict[str, dict], chunks: dict[str, dict], gra
     """Reason the claim must be dropped, or None if it passes."""
     cites = claim.get("cites") or []
     if not cites:
-        return "no citation"
+        return "cites no NASA test or document"
     unknown = [c for c in cites if c not in rows and c not in chunks]
     if unknown:
-        return f"unknown citation {unknown}"
+        return f"unknown citation: {_ids(unknown)} was not in the evidence sent to the model"
 
     allowed: set[float] = set()
     for c in cites:
         allowed |= row_numbers(rows[c]) if c in rows else set(numbers(chunks[c]["text"] + " " + chunks[c]["title"]))
     bad = [n for n in numbers(claim["text"]) if not number_ok(n, allowed)]
     if bad:
-        return f"number(s) {bad} not in cited evidence"
+        return f"{_ids([f'{n:g}' for n in bad])} is not in {_ids(cites)}"
 
     problem = outcome_problem(claim["text"], [rows[c] for c in cites if c in rows])
     if problem:

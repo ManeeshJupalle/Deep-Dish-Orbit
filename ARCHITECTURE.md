@@ -184,9 +184,14 @@ Freeze this in Phase 1 so the web app can be built against sample responses (`we
     "earth": []
   },
   "trust": { "level": "medium", "reason": "2 matching tests, oxygen 13 points lower than asked" },
-  "gaps": ["No PSI data at lunar gravity", "No test above 30% O2 for cotton"]
+  "gaps": ["No PSI data at lunar gravity", "No test above 30% O2 for cotton"],
+  "dropped": [
+    { "text": "FLEX-10 burned methanol at 304 kPa.", "cites": ["FLEX-10"], "reason": "304 is not in FLEX-10" }
+  ]
 }
 ```
+
+`dropped` lists the claims the model drafted that `verify.py` removed, each with a plain-English reason (empty when nothing was removed or no model drafted). The web app shows them struck through in the "Watch the verifier work" view; they are never shown as answers.
 
 `status` is one of:
 

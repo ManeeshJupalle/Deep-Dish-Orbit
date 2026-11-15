@@ -39,6 +39,13 @@ class Claim(Strict):
     cites: list[str]
 
 
+class DroppedClaim(Strict):
+    """A claim the model drafted that verify.py removed, with the reason. Shown by the "Watch the verifier" toggle."""
+    text: str
+    cites: list[str]
+    reason: str
+
+
 class Evidence(Strict):
     test_id: str
     investigation: str
@@ -68,3 +75,4 @@ class AskResponse(Strict):
     bounds: Bounds
     trust: Trust
     gaps: list[str]
+    dropped: list[DroppedClaim] = []

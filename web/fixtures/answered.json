@@ -51,5 +51,6 @@
     "level": "medium",
     "reason": "Sample: 2 matching tests, same material and oxygen"
   },
-  "gaps": ["Sample: no test above 30% O2 for this material"]
+  "gaps": ["Sample: no test above 30% O2 for this material"],
+  "dropped": []
 }

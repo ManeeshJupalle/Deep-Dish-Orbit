@@ -42,6 +42,13 @@ export interface AskResponse {
   bounds: { microgravity: string[]; earth: string[] };
   trust: { level: TrustLevel; reason: string };
   gaps: string[];
+  dropped: DroppedClaim[]; // draft claims verify.py removed, with the reason
+}
+
+export interface DroppedClaim {
+  text: string;
+  cites: string[];
+  reason: string;
 }
 
 export interface ChunkInfo {
@@ -70,4 +77,25 @@ export interface Investigation {
   sensors: string[];
   test_count: number;
   source_url: string;
+}
+
+// One row of GET /tests (data/clean/tests.csv). Missing values are null, never filled in.
+export interface TestRow {
+  test_id: string;
+  investigation: string;
+  psi_id: string;
+  platform: string | null;
+  fuel_phase: string | null;
+  material: string | null;
+  sample_geometry: string | null;
+  o2_pct: number | null;
+  pressure_kpa: number | null;
+  diluent: string | null;
+  flow_cm_s: number | null;
+  gravity_g: number | null;
+  outcome: Outcome | null;
+  spread_rate_mm_s: number | null;
+  extinction_note: string | null;
+  source_url: string;
+  source_file: string;
 }

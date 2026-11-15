@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { EvidenceTable } from "@/components/evidence-table";
 import { GapsList } from "@/components/gaps-list";
 import { TrustBadge } from "@/components/trust-badge";
@@ -63,6 +65,59 @@ function CitationChip({ id, evidenceIds, chunks }: { id: string; evidenceIds: Se
     );
   }
   return <span className={cn(chip, "border-border text-muted-foreground")}>{id}</span>;
+}
+
+// "Watch the verifier work": the model's drafted claims that verify.py removed, struck through, with the reason.
+function VerifierPanel({ dropped, checked }: { dropped: AskResponse["dropped"]; checked: number }) {
+  const [open, setOpen] = useState(false);
+  if (!dropped?.length) {
+    if (!checked) return null;
+    return (
+      <p className="mt-4 border-t border-border pt-3 text-sm text-muted-foreground">
+        <span aria-hidden className="text-zero-g">✓</span> Verifier: every claim above was checked against the NASA
+        row or document it cites; nothing had to be removed this time.
+      </p>
+    );
+  }
+  const n = dropped.length;
+  return (
+    <div className="mt-4 border-t border-border pt-3">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="verifier-panel"
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-2 rounded-md border border-border px-2.5 py-1 text-sm font-semibold hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+      >
+        <span aria-hidden className={cn("inline-block transition-transform", open && "rotate-90")}>▸</span>
+        Watch the verifier work: {n} drafted claim{n === 1 ? "" : "s"} removed
+      </button>
+      {open && (
+        <div id="verifier-panel" className="mt-3 space-y-2.5">
+          <p className="text-sm text-muted-foreground">
+            The AI model drafted these, but NASA&apos;s data does not back them, so they never reach the answer.
+          </p>
+          <ul className="space-y-2">
+            {dropped.map((d, i) => (
+              <li
+                key={i}
+                className="claim-in rounded-md border border-dashed border-destructive/50 bg-destructive/5 p-2.5"
+                style={{ animationDelay: `${i * 140}ms` }}
+              >
+                <p className="text-muted-foreground line-through decoration-destructive/80 decoration-2">
+                  {d.text}
+                  {d.cites.length > 0 && <span className="ml-1 text-xs">[{d.cites.join(", ")}]</span>}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-destructive">
+                  <span className="sr-only">Removed because: </span>✕ {d.reason}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function BoundsPanel({ bounds }: { bounds: AskResponse["bounds"] }) {
@@ -133,6 +188,7 @@ export function AnswerCard({ data, chunks }: { data: AskResponse; chunks: Map<st
             ))}
           </ul>
         )}
+        <VerifierPanel dropped={data.dropped} checked={data.claims.length} />
       </div>
       {data.status === "no_direct_data" && <BoundsPanel bounds={data.bounds} />}
       <GapsList gaps={data.gaps} />
