@@ -24,7 +24,7 @@ All four questions are one-click buttons under "Try one of these" on the Ask pag
 | 3:30-3:45 | Ask **"Does cotton-fiberglass fabric burn in a spacecraft?"** | "Yes: it burned at 0 g in SAFFIRE-II at 2.1 mm/s, and it cites the NASA report on the large-scale fabric fire flown on a spacecraft." |
 | (only if ahead of time) | Click **Plan**, then **Explore** and drag the gap cube | "Habitat designers can enter their cabin atmosphere here. And in the cube, every test sits on the 0 g floor; the Moon and Mars slices are empty." |
 | 3:45-3:55 | **Why it matters** slide | Impact, creativity, validity, relevance: one line each (see the slide notes). |
-| 3:55-4:00 | **Thank you / Questions?** slide | "Answers only from NASA data, every claim cited, and an honest 'we don't know' where NASA never looked. Thank you." |
+| 3:55-4:00 | **Thank you / Questions?** slide (a rocket flies in towing "Hey Elon, we checked Mars too: 0 fire tests. Call us before you light anything." Pause for the laugh.) | "Answers only from NASA data, every claim cited, and an honest 'we don't know' where NASA never looked. Thank you." |
 
 If behind: skip the helium question first, then cotton-fiberglass. Never skip the Moon question.
 
