@@ -77,7 +77,7 @@ Note 1 (O2 derived from CO2 production) applies to every O2 value.
 | `material` | `Fuel` | `Methanol` / `Heptane` |
 | `sample_geometry` | `Droplet initial diameter; mm` | `droplet, initial diameter <d> mm` |
 | `o2_pct` | `O initial ambient composition; mole fraction` | × 100 |
-| `pressure_kpa` | `Ambient pressure; mmHg` | × 0.133322, 1 decimal. Values outside the documented 0.5–1.5 atm test range (380–1140 mmHg) are left empty: 9 tests at 1545–2320 mmHg (FLEX-10 to FLEX-18) and one recorded as `0` (FLEX-114). The raw value stays in the note |
+| `pressure_kpa` | `Ambient pressure; mmHg` | × 0.133322, 1 decimal. Every value is kept as NASA's table gives it, including 9 tests at 1545–2320 mmHg (FLEX-10 to FLEX-18, 206–309 kPa, about 2–3 atm) that the PSI-69 Approach text (0.5–1.5 atm) does not mention. Only one value is left empty: FLEX-114 is recorded as `0` mmHg, which is not a real ambient pressure. The raw value stays in the note |
 | `diluent` | N2 / CO2 / He mole fractions | Gases with a non-zero fraction, joined with `+` (e.g. `N2+CO2`) |
 | `flow_cm_s` | — | Empty: not in the table |
 | `gravity_g` | — | `0` |

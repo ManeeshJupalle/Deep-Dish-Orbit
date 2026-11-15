@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-Gravity = Literal["micro", "moon", "mars", "earth"]
+Gravity = Literal["micro", "moon", "mars", "partial", "earth"]
 Status = Literal["answered", "no_direct_data", "out_of_scope"]
 Outcome = Literal["ignited", "burned", "extinguished", "no_ignition", "other"]
 TrustLevel = Literal["high", "medium", "low"]

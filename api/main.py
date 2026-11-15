@@ -6,9 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api import answer
 from api.data import store
-from api.retrieve import Retrieval, material_rows, retrieve
+from api.retrieve import PARTIAL_G, Retrieval, material_rows, matches, retrieve
 from api.schemas import AskRequest, AskResponse
-from api.trust import matches, trust
+from api.trust import trust
 from api.verify import decide_status, summary_ok, verify
 
 app = FastAPI(title="FlameCheck API")
@@ -69,10 +69,9 @@ def _summary(status: str, r: Retrieval, llm_summary: str | None, claims: list[di
     if status == "out_of_scope":
         return OUT_OF_SCOPE_SUMMARY
     if status == "no_direct_data":
-        if r.conditions.gravity in ("moon", "mars"):
-            where = "lunar" if r.conditions.gravity == "moon" else "Martian"
-            return (f"NASA PSI has no fire tests at {where} gravity. The 0 g and 1 g tests below only bound "
-                    "the answer; they do not predict it.")
+        if r.conditions.gravity in PARTIAL_G:
+            return (f"NASA PSI has no fire tests at {PARTIAL_G[r.conditions.gravity]} gravity. The 0 g and 1 g "
+                    "tests below only bound the answer; they do not predict it.")
         if claims:
             return ("NASA PSI has no test at the conditions you asked about. The closest tests below do not "
                     "answer the question directly.")
@@ -103,7 +102,7 @@ def ask(req: AskRequest) -> AskResponse:
                     draft["summary"], r, evidence, req.question, claims):
                 llm_summary = draft["summary"].strip()
         # If no surviving claim cites a test at the asked conditions, also restate the closest tests.
-        if not any(matches(rows[i], r) for c in claims for i in c["cites"] if i in rows):
+        if not any(matches(rows[i], r.conditions, r.diluents) for c in claims for i in c["cites"] if i in rows):
             cited = {i for c in claims for i in c["cites"]}
             extra = verify(req.question, r, evidence, answer.template(r)["claims"]).claims
             claims += [c for c in extra if not set(c["cites"]) & cited]

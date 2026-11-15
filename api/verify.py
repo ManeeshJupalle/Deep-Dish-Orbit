@@ -3,7 +3,8 @@
 A claim is dropped when:
   1. it cites nothing, or cites an id that was not in the evidence sent to the model;
   2. any number in it is not in a cited row or chunk (rounding to 1 decimal allowed);
-  3. the question is about Moon/Mars gravity and the claim is not phrased as a 0 g / 1 g bound.
+  3. it is about Moon/Mars behavior (the question or the claim says so) and is not phrased as a 0 g / 1 g bound;
+  4. it uses an outcome word (burned, extinguished, did not ignite, ...) the cited tests' `outcome` does not record.
 Every drop is logged to logs/verify.jsonl.
 """
 import json
@@ -12,22 +13,24 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-from api.retrieve import Retrieval
+from api.answer import ROW_FIELDS
+from api.retrieve import PARTIAL_G, Retrieval
 
 LOG = Path(__file__).resolve().parent.parent / "logs" / "verify.jsonl"
 
-# Ids and names such as BASS2-B1, SAFFIRE2-2-5-1G, FLEX-19, PSI-25, NTRS-20210011385-chunk1, BASS-II.
-_ID = re.compile(r"\b[A-Z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)+\b")
-# Numbers not glued to a preceding letter (so O2, CO2, N2 are not numbers).
-_NUM = re.compile(r"(?<![A-Za-z0-9.])\d+(?:\.\d+)?")
+# Ids and names such as BASS2-B1, SAFFIRE2-2-5-1G, FLEX-19, PSI-25, NTRS-20210011385-chunk1, BASS-II,
+# and NASA's own FLEX identifiers such as 20CAL08 or 256F002.
+_ID = re.compile(r"\b[A-Z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)+\b|\b\d+[A-Za-z]+\d[A-Za-z0-9]*\b")
+# Numbers not glued to a preceding letter (so O2, CO2, N2 are not numbers). ".75" counts as 0.75.
+_NUM = re.compile(r"(?<![A-Za-z0-9.])(?:\d+(?:\.\d+)?|\.\d+)")
 ZERO_G = re.compile(r"\b0\s?g\b|micro-?gravity|[µμ]-?g\b", re.I)
 ONE_G = re.compile(r"\b1\s?g\b|1-g\b|normal gravity|earth gravity|\bon earth\b", re.I)
 MOON_MARS = re.compile(r"\bmoon\b|lunar|\bmars\b|martian", re.I)
 
 # Outcome words a claim may only use when the cited rows' `outcome` column backs them.
 MEASURES = re.compile(r"burn(?:ing)?[- ](?:rate|time|length|duration)|extinction diameter|spread (?:rate|length)", re.I)
-OUTCOME_WORDS = [  # order matters: "did not ignite" is removed before "ignite" is looked for
-    ("no_ignition", re.compile(r"(?:did|does|would) not ignite|failed to ignite|no ignition|not ignite", re.I)),
+OUTCOME_WORDS = [  # order matters: "did not ignite" / "never burned" go before "ignite" / "burn" are looked for
+    ("no_ignition", re.compile(r"(?:\bnot|n't|\bnever|\bno|failed to)\s+(?:ignit|burn)\w*", re.I)),
     ("extinguished", re.compile(r"extinguish|extinction|put out|went out|blow-?off|quench", re.I)),
     ("burned", re.compile(r"\bburn(?:ed|t|s|ing)?\b", re.I)),
     ("ignited", re.compile(r"\bignit(?:ed|es|ion)\b", re.I)),
@@ -47,8 +50,9 @@ def numbers(text: str) -> list[float]:
 
 
 def row_numbers(row: dict) -> set[float]:
+    """Numbers in the columns the model was shown. File names and PSI ids are not data."""
     out = set()
-    for v in row.values():
+    for v in (row.get(k) for k in ROW_FIELDS):
         if isinstance(v, (int, float)):
             out.add(float(v))
         elif isinstance(v, str):
@@ -102,15 +106,17 @@ def check_claim(claim: dict, rows: dict[str, dict], chunks: dict[str, dict], gra
     if problem:
         return problem
 
-    if gravity in ("moon", "mars"):
-        levels = {rows[c]["gravity_g"] for c in cites if c in rows}
-        text = claim["text"]
+    # Rule 3 applies when the question is about partial gravity, or the claim itself talks about the Moon or Mars.
+    text = claim["text"]
+    levels = {rows[c]["gravity_g"] for c in cites if c in rows}
+    says_moon_mars = bool(MOON_MARS.search(text))
+    if gravity in PARTIAL_G or says_moon_mars:
         if 0.0 in levels and not ZERO_G.search(text):
             return "Moon/Mars claim cites 0 g data but is not phrased as a 0 g bound"
         if 1.0 in levels and not ONE_G.search(text):
             return "Moon/Mars claim cites 1 g data but is not phrased as a 1 g bound"
-        if not levels and MOON_MARS.search(text) and not (ZERO_G.search(text) or ONE_G.search(text)):
-            return "claim about Moon/Mars behavior without a 0 g / 1 g bound"
+    if gravity in PARTIAL_G and not levels and says_moon_mars and not (ZERO_G.search(text) or ONE_G.search(text)):
+        return "claim about Moon/Mars behavior without a 0 g / 1 g bound"
     return None
 
 
@@ -146,7 +152,7 @@ def summary_ok(summary: str, r: Retrieval, evidence: list[dict], question: str, 
 def decide_status(r: Retrieval, claims: list[dict]) -> str:
     if r.out_of_scope:
         return "out_of_scope"
-    if r.conditions.gravity in ("moon", "mars") or r.gaps or not claims:
+    if r.conditions.gravity in PARTIAL_G or r.gaps or not claims:
         return "no_direct_data"
     return "answered"
 

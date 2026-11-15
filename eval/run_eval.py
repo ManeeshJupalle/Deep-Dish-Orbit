@@ -16,7 +16,7 @@ import yaml
 from api import llm
 from api.data import store
 from api.retrieve import families
-from api.verify import number_ok, numbers, row_numbers
+from api.verify import LOG as VERIFY_LOG, number_ok, numbers, row_numbers
 
 HERE = Path(__file__).resolve().parent
 CHECKS = ("status", "citations_real", "required_cited", "no_invented")
@@ -118,6 +118,7 @@ def main() -> None:
 
     questions = yaml.safe_load((HERE / "questions.yaml").read_text(encoding="utf-8"))
     call = ask_fn(args.url)
+    dropped_before = len(VERIFY_LOG.read_text(encoding="utf-8").splitlines()) if VERIFY_LOG.exists() else 0
     rows, times = [], []
     for i, q in enumerate(questions):
         if i and args.pause:
@@ -130,13 +131,15 @@ def main() -> None:
 
     passed = sum(all(c.values()) for _, _, c, _ in rows)
     per_check = {k: sum(c[k] for _, _, c, _ in rows) for k in CHECKS}
-    mode = f"Gemini ({', '.join(llm.CHAT_MODELS)})" if llm.available() else "evidence-only template (no GEMINI_API_KEY)"
+    mode = llm.describe()
     if llm.available() and not args.url:
         from api.answer import STATS
-        drafted = STATS["gemini_ok"]
-        tried = drafted + STATS["gemini_error"] + STATS["gemini_bad_json"]
-        mode += (f"; Gemini drafted {drafted} of {tried} answers it was asked for "
-                 f"({STATS['gemini_error']} errors, {STATS['gemini_bad_json']} bad JSON fell back to evidence-only)")
+        drafted = STATS["drafted"]
+        tried = drafted + STATS["error"] + STATS["bad_json"]
+        dropped = len(VERIFY_LOG.read_text(encoding="utf-8").splitlines()) - dropped_before if VERIFY_LOG.exists() else 0
+        mode += (f"; the model drafted {drafted} of {tried} answers it was asked for "
+                 f"({STATS['error']} errors, {STATS['bad_json']} bad JSON fell back to evidence-only); "
+                 f"the verifier dropped {dropped} drafted claims; usage {dict(llm.USAGE)}")
     tick = lambda ok: "✅" if ok else "❌"
 
     lines = [

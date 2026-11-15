@@ -4,9 +4,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api import answer, verify as verify_mod
+from api.data import store
 from api.main import app
-from api.retrieve import retrieve
-from api.schemas import AskResponse
+from api.retrieve import Retrieval, retrieve
+from api.schemas import AskResponse, Conditions
 from api.verify import check_claim, decide_status, numbers, summary_ok, verify
 
 client = TestClient(app)
@@ -141,3 +142,49 @@ def test_ask_end_to_end_without_llm(monkeypatch, question, status):
     assert cited <= {e["test_id"] for e in d["evidence"]}
     if status == "no_direct_data":
         assert d["bounds"]["microgravity"] and d["bounds"]["earth"]
+
+
+# ---- regressions from the code review ----
+
+def test_numbers_must_come_from_data_columns_not_file_names_or_ids():
+    rows = {i: store().by_id[i] for i in ("BASS2-B1", "SAFFIRE3-S1", "FLEX-1")}
+    # 25 and 100 appear only in source_file (PSI-25_..., PSI-100_...); 20 only inside the id "20CAL08".
+    assert check_claim({"text": "At 0 g, BASS2-B1 was run at 25% O2.", "cites": ["BASS2-B1"]}, rows, {}, None)
+    assert check_claim({"text": "At 0 g, SAFFIRE3-S1 was run at 100 kPa.", "cites": ["SAFFIRE3-S1"]}, rows, {}, None)
+    assert check_claim({"text": "At 0 g, FLEX-1 was run at 20% O2.", "cites": ["FLEX-1"]}, rows, {}, None)
+    assert check_claim({"text": "At 0 g, BASS2-B1 was run at 22.2% O2.", "cites": ["BASS2-B1"]}, rows, {}, None) is None
+
+
+def test_leading_dot_numbers_are_checked():
+    rows = {"SAFFIRE3-S1": store().by_id["SAFFIRE3-S1"]}  # geometry says "thickness .33 cm"
+    assert numbers("spread at .75 mm/s") == [0.75]
+    assert check_claim({"text": "At 0 g, the sample spread at .75 mm/s.", "cites": ["SAFFIRE3-S1"]}, rows, {}, None)
+    assert check_claim({"text": "At 0 g, the sample was 0.33 cm thick.", "cites": ["SAFFIRE3-S1"]}, rows, {}, None) is None
+
+
+@pytest.mark.parametrize("text", [
+    "At 0 g, the sample did not burn.",
+    "At 0 g, the sample didn't ignite.",
+    "At 0 g, the sample never burned.",
+])
+def test_negated_outcome_is_not_backed_by_a_burned_row(text):
+    rows = {"SAFFIRE2-2-5": store().by_id["SAFFIRE2-2-5"]}
+    assert rows["SAFFIRE2-2-5"]["outcome"] == "burned"
+    assert check_claim({"text": text, "cites": ["SAFFIRE2-2-5"]}, rows, {}, None)
+
+
+def test_moon_wording_needs_a_bound_in_any_question():
+    rows = {"SAFFIRE2-2-5": store().by_id["SAFFIRE2-2-5"]}
+    bare = {"text": "Cotton-fiberglass fabric burns on the Moon.", "cites": ["SAFFIRE2-2-5"]}
+    bound = {"text": "At 0 g, which only bounds the Moon, the cotton-fiberglass fabric burned.", "cites": ["SAFFIRE2-2-5"]}
+    assert check_claim(bare, rows, {}, "micro")  # the question itself was not about the Moon
+    assert check_claim(bound, rows, {}, "micro") is None
+
+
+def test_every_row_restated_by_the_template_passes():
+    """Guards against over-strictness: a plain restatement of any NASA row must survive."""
+    for t in store().tests:
+        r = Retrieval(conditions=Conditions(), tests=[(t, 1.0)], chunks=[], bounds={"microgravity": [], "earth": []},
+                      gaps=[], out_of_scope=False, scores={})
+        (claim,) = answer.template(r)["claims"]
+        assert check_claim(claim, {t["test_id"]: t}, {}, None) is None, claim

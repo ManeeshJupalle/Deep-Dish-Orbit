@@ -1,24 +1,14 @@
 """High / Medium / Low trust badge with a reason (ARCHITECTURE.md 7.4)."""
-from api.retrieve import O2_NEAR, Retrieval, families, fmt
-
-
-def matches(t: dict, r: Retrieval) -> bool:
-    """Test row is at the asked conditions: same material family, O2 within 3 points, same gravity."""
-    c = r.conditions
-    want = families(c.material)
-    want_g = {"micro": 0.0, "earth": 1.0}.get(c.gravity or "")
-    return ((not want or bool(families(t["material"]) & want))
-            and (c.o2_pct is None or (t["o2_pct"] is not None and abs(t["o2_pct"] - c.o2_pct) <= O2_NEAR))
-            and (want_g is None or t["gravity_g"] == want_g))
+from api.retrieve import O2_NEAR, PARTIAL_G, Retrieval, fmt, matches
 
 
 def trust(r: Retrieval, claims: list[dict], status: str, rows: dict[str, dict]) -> dict:
     c = r.conditions
     if status == "out_of_scope":
         return {"level": "low", "reason": "Question is outside the PSI fire-safety data"}
-    if c.gravity in ("moon", "mars"):
-        where = "lunar" if c.gravity == "moon" else "Martian"
-        return {"level": "low", "reason": f"Only 0 g and 1 g bounding tests; no PSI data at {where} gravity"}
+    if c.gravity in PARTIAL_G:
+        return {"level": "low",
+                "reason": f"Only 0 g and 1 g bounding tests; no PSI data at {PARTIAL_G[c.gravity]} gravity"}
     if not claims:
         return {"level": "low", "reason": "No verified claim"}
 
@@ -27,10 +17,10 @@ def trust(r: Retrieval, claims: list[dict], status: str, rows: dict[str, dict]) 
     if not cited:
         return {"level": "low", "reason": "Only text evidence, no test rows"}
 
-    matching = [t for t in cited if matches(t, r)]
+    matching = [] if r.gaps else [t for t in cited if matches(t, c, r.diluents)]  # a gap means nothing matches
     n = len(matching)
     with_outcome = sum(t["outcome"] is not None for t in matching)
-    if with_outcome >= 3 and not r.gaps:
+    if with_outcome >= 3 and not r.gaps and not r.any_material:
         return {"level": "high", "reason": f"{with_outcome} verified tests at matching conditions"}
     reason = f"{n} matching test{'s' if n != 1 else ''}" if n else "Tests near but not at the asked conditions"
     if n and with_outcome < n:
@@ -43,4 +33,6 @@ def trust(r: Retrieval, claims: list[dict], status: str, rows: dict[str, dict]) 
                 reason += f", oxygen {fmt(round(abs(gap), 1))} points {'lower' if gap < 0 else 'higher'} than asked"
         else:
             reason += ", oxygen not reported for the cited tests"
+    if r.any_material:  # "same material family" cannot hold when the question names none we recognise
+        reason += "; the question names no material FlameCheck recognises, so tests of any material are shown"
     return {"level": "medium", "reason": reason}

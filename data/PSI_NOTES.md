@@ -22,7 +22,7 @@ Page URL pattern: `https://psi.nasa.gov/physci/repo/data/investigations/PSI-<n>`
 - **BASS-II:** test number, sample, fuel material, flow restrictor, fan display, air display, initial/final calibrated O2 %, CO2, CO. No flow speed, pressure, outcome or spread rate in the table. Flow may come from `Test.Matrices.xlsx` + `Fan calibration data.xlsx`.
 - **SAFFIRE-II:** material, thickness, size, air flow (20 cm/s), %O2 (~21.5–22.1, derived from CO2), ignition, burn time, flow direction, µg burn length and spread rate, 1 g burn length and spread rate. Messy: blank material on 2 samples, "µ-g" shows as "?-g", thickness like "037 mm".
 - **SAFFIRE-III:** sample, flow direction, SIBAL, 30 cm/s, thickness ".33 cm" (suspect units).
-- **FLEX:** fuel, pressure (mmHg, 526–2320; 9 values > 1500 conflict with the documented 0.5–1.5 atm), O2/N2/CO2/He mole fractions, droplet and extinction diameter, burning rate, burn time, outcome (Extinction 186, Disruption 61, Completion 27).
+- **FLEX:** fuel, pressure (mmHg, 526–2320; 9 values > 1500 are above the 0.5–1.5 atm in the Approach text and are kept as the table gives them), O2/N2/CO2/He mole fractions, droplet and extinction diameter, burning rate, burn time, outcome (Extinction 186, Disruption 61, Completion 27).
 
 ## Cotton and 1 g
 

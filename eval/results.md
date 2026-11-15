@@ -1,6 +1,6 @@
 # FlameCheck eval results
 
-Run: 2026-11-14 14:13 · Answer mode: Gemini (gemini-3.5-flash-lite, gemini-3.1-flash-lite); Gemini drafted 19 of 19 answers it was asked for (0 errors, 0 bad JSON fell back to evidence-only) · API: in-process · Median latency: 1265 ms
+Run: 2026-11-15 12:01 · Answer mode: Azure OpenAI gpt-5.6-luna then Gemini gemini-3.5-flash-lite, gemini-3.1-flash-lite; the model drafted 19 of 19 answers it was asked for (0 errors, 0 bad JSON fell back to evidence-only); the verifier dropped 5 drafted claims; usage {'azure_calls': 19, 'azure_tokens_in': 58980, 'azure_tokens_out': 7148} · API: in-process · Median latency: 3520 ms
 
 **Score: 20 of 20 questions pass every check.**
 

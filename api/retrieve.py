@@ -6,7 +6,7 @@ only come from words the user actually typed.
 import math
 import re
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 
 from api import llm
@@ -31,15 +31,26 @@ FAMILIES = {
 _FAMILY_RE = {k: re.compile(v, re.I) for k, v in FAMILIES.items()}
 # Common spacecraft materials with no test in these PSI tables. Naming one must produce a
 # "No PSI test for ..." gap, not an answer about some other material.
-OTHER_MATERIALS = re.compile(r"\b(kapton|teflon|ptfe|polyethylene|polyurethane|nylon|velcro|polyester|wool|"
-                             r"paper|cardboard|foam|aluminum|aluminium|titanium|polyimide|kevlar|rubber)\b", re.I)
+OTHER_MATERIALS = re.compile(
+    r"\b(kapton|teflon|ptfe|polyethylene|polypropylene|polystyrene|polycarbonate|polyurethane|pvc|vinyl|nylon|"
+    r"velcro|polyester|wool|silk|leather|denim|paper|cardboard|wood|plywood|plastics?|foam|rubber|neoprene|epoxy|"
+    r"mylar|kevlar|polyimide|aluminum|aluminium|titanium|steel|magnesium|lithium|battery|batteries|wires?|wiring|"
+    r"cables?|ethanol|gasoline|kerosene|diesel|hydrogen|methane|propane|butane|ethylene|decane|dodecane|octane)\b",
+    re.I)
 
 INVESTIGATIONS = {"BASS-II": r"bass", "SAFFIRE-II": r"saffire[- ]?(ii|2)\b", "SAFFIRE-III": r"saffire[- ]?(iii|3)\b",
                   "FLEX": r"\bflex\b"}
+# "FLEX-2" is a later investigation with no table loaded here; only "test FLEX-2" means row 2 of FLEX.
+FLEX2 = re.compile(r"(?<!test )\bflex[- ]?2j?\b", re.I)
 DILUENTS = {"He": r"helium|\bhe\b", "CO2": r"\bco2\b|carbon dioxide", "N2": r"nitrogen|\bn2\b"}
-GRAVITY = [("moon", r"\bmoon\b|lunar|artemis"), ("mars", r"\bmars\b|martian"),
-           ("micro", r"micro-?gravity|\b0\s*g\b|zero[- ]g|weightless|\biss\b|space station|spacecraft|orbit"),
-           ("earth", r"\bearth\b|\b1\s*g\b|normal gravity|on the ground")]
+# First match wins. A decimal below 1 g that is not the Moon's or Mars's is "partial".
+GRAVITY = [("moon", r"moon|lunar|artemis|\b1/6(?:th)?\b|one[- ]sixth|(?<![\d.])0?\.1[67]\d*\s*-?g\b"),
+           ("mars", r"\bmars\b|martian|\b3/8(?:ths?)?\b|three[- ]eighths|(?<![\d.])0?\.3[78]\d*\s*-?g\b"),
+           ("partial", r"partial[- ]g(?:ravity)?\b|reduced[- ]gravity|(?<![\d.])0?\.\d*[1-9]\d*\s*-?g\b"),
+           ("micro", r"micro-?gravity|(?<![\d.])0\s*-?g\b|zero[- ]g|weightless|\biss\b|space station|spacecraft|orbit"),
+           ("earth", r"\bearth\b|(?<![\d./])1\s*-?g\b|normal gravity|on the ground")]
+PARTIAL_G = {"moon": "lunar", "mars": "Martian", "partial": "partial"}  # gravity levels with no PSI data
+G_LEVEL = {"micro": 0.0, "earth": 1.0}                                  # gravity levels PSI has data at
 OUT_OF_SCOPE = re.compile(r"rocket|propellant|thruster|\bengines?\b|launch vehicle|hydrazine|\bmotor\b", re.I)
 
 TO_KPA = {"kpa": 1.0, "psi": 6.89476, "psia": 6.89476, "atm": 101.325, "mmhg": 0.133322, "torr": 0.133322, "bar": 100.0}
@@ -63,6 +74,8 @@ class Retrieval:
     gaps: list[str]
     out_of_scope: bool
     scores: dict[str, float]  # match score for every test in `tests` and `bounds`
+    diluents: set[str] = field(default_factory=set)  # diluents named in the question (He, CO2, N2)
+    any_material: bool = False  # no material, investigation or test was recognised, so rows of any material match
 
 
 def families(text: str | None) -> set[str]:
@@ -152,15 +165,37 @@ def _rank(scored: list[tuple[dict, float]], c: Conditions) -> list[tuple[dict, f
     return sorted([x for x in scored if x[1] > 0], key=key)
 
 
-def _gaps(c: Conditions, pool: list[dict], label: str) -> list[str]:
+def _has_diluent(row: dict, diluents: set[str]) -> bool:
+    return bool(row["diluent"] and diluents & set(row["diluent"].split("+")))
+
+
+def matches(row: dict, c: Conditions, diluents: set[str]) -> bool:
+    """Row is at the asked conditions: material, O2 within 3 points, pressure within 10 kPa, gravity, diluent."""
+    g = G_LEVEL.get(c.gravity)
+    return ((not c.material or bool(material_rows([row], c.material)))
+            and (c.o2_pct is None or (row["o2_pct"] is not None and abs(row["o2_pct"] - c.o2_pct) <= O2_NEAR))
+            and (c.pressure_kpa is None or (row["pressure_kpa"] is not None
+                                            and abs(row["pressure_kpa"] - c.pressure_kpa) <= PRESSURE_NEAR))
+            and (g is None or row["gravity_g"] == g)
+            and (not diluents or _has_diluent(row, diluents)))
+
+
+def _gaps(c: Conditions, pool: list[dict], named: set[str], diluents: set[str]) -> list[str]:
+    """What NASA did not test, worked out from the rows. `pool` is the asked material's rows (or all rows)."""
+    scope = "/".join(sorted(named))  # investigations named in the question, so gaps never overstate
     gaps = []
-    if c.gravity == "moon":
-        gaps.append("No PSI data at lunar gravity")
-    if c.gravity == "mars":
-        gaps.append("No PSI data at Martian gravity")
+    if c.gravity in PARTIAL_G:
+        gaps.append(f"No PSI data at {PARTIAL_G[c.gravity]} gravity")
     if c.material and not pool:
-        return gaps + [f"No PSI test for {c.material}"]
-    what = f"{label} test" if label else "test"
+        elsewhere = sorted({r["investigation"] for r in material_rows(store().tests, c.material)}) if named else []
+        return gaps + [f"No {scope or 'PSI'} test for {c.material}"
+                       + (f" (tested in {', '.join(elsewhere)})" if elsewhere else "")]
+    g = G_LEVEL.get(c.gravity)
+    at_g = pool if g is None else [r for r in pool if r["gravity_g"] == g]
+    what = " ".join(x for x in (f"{fmt(g)} g" if g is not None else "", scope, c.material, "test") if x)
+    if not at_g:
+        return gaps + [f"No {what}"]
+    pool = at_g
     if c.o2_pct is not None:
         o2s = [r["o2_pct"] for r in pool if r["o2_pct"] is not None]
         if not o2s:
@@ -175,8 +210,12 @@ def _gaps(c: Conditions, pool: list[dict], label: str) -> list[str]:
             gaps.append(f"No {what} reports a pressure")
         elif min(abs(p - c.pressure_kpa) for p in ps) > PRESSURE_NEAR:
             gaps.append(f"No {what} within {fmt(PRESSURE_NEAR)} kPa of {fmt(c.pressure_kpa)} kPa")
-    if c.gravity in ("moon", "mars", "earth") and not any(r["gravity_g"] == 1 for r in pool):
+    if diluents and not any(_has_diluent(r, diluents) for r in pool):
+        gaps.append(f"No {what} with {' or '.join(sorted(diluents))} as the diluent")
+    if c.gravity in PARTIAL_G and not any(r["gravity_g"] == 1 for r in pool):
         gaps.append(f"No 1 g comparison {what}")
+    if not gaps and not any(matches(r, c, diluents) for r in pool):
+        gaps.append(f"No single {what} matches all the asked conditions")
     return gaps
 
 
@@ -199,7 +238,7 @@ def _chunk_index():
 
 def rank_chunks(question: str) -> list[tuple[dict, float]]:
     chunks, emb = store().chunks, store().embeddings
-    if emb is not None and llm.available():
+    if emb is not None and llm.gemini_configured():
         try:
             sims = emb @ llm.embed([question], "RETRIEVAL_QUERY")[0]
             order = sims.argsort()[::-1][:TOP_CHUNKS]
@@ -217,8 +256,9 @@ def rank_chunks(question: str) -> list[tuple[dict, float]]:
 
 def retrieve(question: str, conditions: Conditions | None = None) -> Retrieval:
     c = merge(conditions, parse_conditions(question))
+    q = FLEX2.sub(" ", question)  # the FLEX-2 investigation must not select FLEX rows or pin test FLEX-2
     rows = store().tests
-    named = {k for k, rx in INVESTIGATIONS.items() if re.search(rx, question, re.I)}
+    named = {k for k, rx in INVESTIGATIONS.items() if re.search(rx, q, re.I)}
     if named:
         rows = [r for r in rows if r["investigation"] in named]
     diluents = {k for k, rx in DILUENTS.items() if re.search(rx, question, re.I)}
@@ -226,41 +266,47 @@ def retrieve(question: str, conditions: Conditions | None = None) -> Retrieval:
     mat = material_rows(rows, c.material) if c.material else []
     candidates = mat or rows
     mat_ids = {r["test_id"] for r in mat}
-    gravity_g = {"micro": 0.0, "earth": 1.0}.get(c.gravity or "")
+    partial = c.gravity in PARTIAL_G
 
-    has_signal = any([c.material, c.o2_pct is not None, c.pressure_kpa is not None, c.flow_cm_s is not None,
-                      diluents, named])
+    criteria = any([c.material, c.o2_pct is not None, c.pressure_kpa is not None, c.flow_cm_s is not None, diluents])
     tests: list[tuple[dict, float]] = []
     bounds = {"microgravity": [], "earth": []}
     scores: dict[str, float] = {}
     def scored(g: float | None) -> list[tuple[dict, float]]:
         out = [(r, score(r, c, g, diluents, r["test_id"] in mat_ids)) for r in candidates]
-        if named and not any(s for _, s in out):  # only an investigation was named
+        if named and not criteria and not any(s for _, s in out):  # only an investigation was named
             out = [(r, 1.0) for r, _ in out]
         return _rank(out, c)
 
     # Tests named in the question (e.g. "BASS2-B1") always come first.
-    named_ids = {m.lower() for m in _TEST_ID.findall(question)}
+    named_ids = {m.lower() for m in _TEST_ID.findall(q)}
     pinned = [t for t in store().tests if t["test_id"].lower() in named_ids]
-    has_signal = has_signal or bool(pinned)
 
-    if has_signal:
-        ranked_tests = [x for x in scored(gravity_g) if x[0] not in pinned]
+    if criteria or named or pinned or partial:
+        ranked_tests = [x for x in scored(G_LEVEL.get(c.gravity)) if x[0] not in pinned]
         tests = [(p, 1.0) for p in pinned] + [(r, round(s, 2)) for r, s in ranked_tests][:TOP_TESTS - len(pinned)]
         ranked = scored(None)  # bounds ignore gravity: best 0 g and best 1 g matches
+        if partial:  # Moon/Mars questions always get bounds, even when nothing else in the question matches a row
+            have = {r["test_id"] for r, _ in ranked}
+            rest = [r for r in candidates if r["test_id"] not in have]
+            ranked += [(r, 0.0) for r in sorted(rest, key=lambda r: r["outcome"] is None)]
         bounds = {"microgravity": [r["test_id"] for r, _ in ranked if r["gravity_g"] == 0][:TOP_BOUNDS],
                   "earth": [r["test_id"] for r, _ in ranked if r["gravity_g"] == 1][:TOP_BOUNDS]}
         bound_ids = set(bounds["microgravity"] + bounds["earth"])
         scores = {r["test_id"]: round(s, 2) for r, s in ranked if r["test_id"] in bound_ids}
         scores.update({r["test_id"]: s for r, s in tests})
 
-    label = c.material or ""
+    gaps = _gaps(c, mat if c.material else rows, named, diluents)
+    if q != question:
+        gaps.append("FLEX-2 is a separate investigation; its test data is not loaded here")
     return Retrieval(
         conditions=c,
         tests=tests,
         chunks=rank_chunks(question),
         bounds=bounds,
-        gaps=_gaps(c, mat if c.material else rows, label),
+        gaps=gaps,
         out_of_scope=bool(OUT_OF_SCOPE.search(question)),
         scores=scores,
+        diluents=diluents,
+        any_material=not (c.material or named or pinned),
     )

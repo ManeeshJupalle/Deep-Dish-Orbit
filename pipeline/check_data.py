@@ -9,7 +9,7 @@ from collections import Counter
 
 from pipeline.schema import CLEAN, COLUMNS, FUEL_PHASES, OUTCOMES
 
-RANGES = {"o2_pct": (0, 100), "pressure_kpa": (0, 200), "flow_cm_s": (0, 1000),
+RANGES = {"o2_pct": (0, 100), "pressure_kpa": (0, 350), "flow_cm_s": (0, 1000),
           "gravity_g": (0, 1), "spread_rate_mm_s": (0, 1000)}
 
 

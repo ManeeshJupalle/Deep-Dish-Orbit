@@ -24,8 +24,10 @@ def test_known_rows_match_source():
     assert t["FLEX-1"]["pressure_kpa"] == "101.0"
     assert float(t["FLEX-1"]["o2_pct"]) == 21.0
     assert t["FLEX-1"]["outcome"] == "other"
-    # FLEX-10 pressure (2319.7 mmHg) contradicts the documented range -> empty, not guessed
-    assert t["FLEX-10"]["pressure_kpa"] == ""
+    # FLEX-10: NASA's table says 2319.7 mmHg (about 3 atm); kept as recorded -> 309.3 kPa
+    assert t["FLEX-10"]["pressure_kpa"] == "309.3"
+    # FLEX-114 is recorded as 0 mmHg, which is not a real ambient pressure -> empty, not guessed
+    assert t["FLEX-114"]["pressure_kpa"] == ""
     # SAFFIRE-II cotton-fiberglass sample has both a 0 g and a 1 g row
     assert t["SAFFIRE2-2-5"]["gravity_g"] == "0"
     assert t["SAFFIRE2-2-5"]["spread_rate_mm_s"] == "2.1"

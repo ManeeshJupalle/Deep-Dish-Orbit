@@ -11,16 +11,16 @@ HE = "He initial ambient composition; mole fraction"
 
 OUTCOME = {"Extinction": "extinguished", "Completion": "burned", "Disruption": "other"}
 
-# The PSI-69 Approach text gives test pressures of 0.5-1.5 atm. Values outside that
-# range (e.g. 2319.7 mmHg, or 0) contradict the source, so they are left empty.
-P_MIN_MMHG, P_MAX_MMHG = 0.5 * 760, 1.5 * 760
+# Pressures are kept exactly as NASA's table gives them, including nine tests at about 2-3 atm
+# that the PSI-69 Approach text (0.5-1.5 atm) does not mention. Only a recorded 0 mmHg
+# (FLEX-114) is left empty: it is not a real ambient pressure.
 
 
 def clean() -> list[dict]:
     rows = []
     for r in read_raw(RAW / "FLEX" / SOURCE_FILE):
         p = num(r["Ambient pressure; mmHg"])
-        pressure = round(p * MMHG_TO_KPA, 1) if p is not None and P_MIN_MMHG <= p <= P_MAX_MMHG else None
+        pressure = round(p * MMHG_TO_KPA, 1) if p else None
         o2 = num(r[O2])
         gases = {"N2": num(r[N2]), "CO2": num(r[CO2]), "He": num(r[HE])}
         d0 = r["Droplet initial diameter; mm"]

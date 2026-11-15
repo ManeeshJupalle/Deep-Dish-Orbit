@@ -1,6 +1,6 @@
 """Draft an answer from retrieved evidence only (ARCHITECTURE.md 7.2).
 
-draft() asks Gemini (temperature 0, JSON only, one retry on bad JSON). template() is the
+draft() asks the drafting model (Azure OpenAI or Gemini, see llm.py; JSON only, one retry on bad JSON). template() is the
 no-LLM fallback: it restates the top evidence rows. Both outputs go through verify.py.
 """
 import json
@@ -8,12 +8,12 @@ from collections import Counter
 from pathlib import Path
 
 from api import llm
-from api.retrieve import Retrieval, fmt
+from api.retrieve import PARTIAL_G, Retrieval, fmt
 
 SYSTEM = (Path(__file__).parent / "prompts" / "answer.md").read_text(encoding="utf-8")
 ROW_FIELDS = ("test_id", "investigation", "material", "sample_geometry", "o2_pct", "pressure_kpa", "diluent",
               "flow_cm_s", "gravity_g", "outcome", "spread_rate_mm_s", "extinction_note")
-STATS: Counter = Counter()  # gemini_ok / gemini_error / gemini_bad_json, read by eval/run_eval.py
+STATS: Counter = Counter()  # drafted / error / bad_json, read by eval/run_eval.py
 OUTCOME_TEXT = {"burned": "burned", "extinguished": "was extinguished", "no_ignition": "did not ignite",
                 "ignited": "ignited", "other": "is recorded with outcome 'other'"}
 
@@ -53,7 +53,7 @@ def _valid(d) -> bool:
 
 
 def draft(question: str, r: Retrieval) -> dict | None:
-    """Gemini draft, or None if Gemini is unavailable or keeps returning bad JSON."""
+    """Model draft, or None if no model is available or it keeps returning bad JSON."""
     if not llm.available():
         return None
     prompt = build_prompt(question, r)
@@ -63,18 +63,18 @@ def draft(question: str, r: Retrieval) -> dict | None:
         except json.JSONDecodeError:
             continue
         except Exception:  # network, quota, auth: fall back to the template
-            STATS["gemini_error"] += 1
+            STATS["error"] += 1
             return None
         if _valid(d):
-            STATS["gemini_ok"] += 1
+            STATS["drafted"] += 1
             return d
-    STATS["gemini_bad_json"] += 1
+    STATS["bad_json"] += 1
     return None
 
 
 def template(r: Retrieval) -> dict:
     """Evidence-only answer built straight from the rows (used when the LLM is unavailable)."""
-    moon_or_mars = r.conditions.gravity in ("moon", "mars")
+    moon_or_mars = r.conditions.gravity in PARTIAL_G
     from api.data import store
     if moon_or_mars:
         rows = [store().by_id[i] for i in r.bounds["microgravity"][:2] + r.bounds["earth"][:1]]
