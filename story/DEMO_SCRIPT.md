@@ -22,8 +22,13 @@ All four questions are one-click buttons under "Try one of these" on the Ask pag
 | 2:55-3:15 | Ask **"Is cotton safe at 34% oxygen on the Moon?"** | "It refuses to guess. *No direct data*, the closest 0 g and 1 g tests as bounds, and exactly what NASA never tested: no cotton test above 22% oxygen." |
 | 3:15-3:30 | Ask **"Which FLEX tests used helium to put out the flame?"** | "It finds the exact FLEX tests that used helium as the diluent, with High trust because every cited test matches." |
 | 3:30-3:45 | Ask **"Does cotton-fiberglass fabric burn in a spacecraft?"** | "Yes: it burned at 0 g in SAFFIRE-II at 2.1 mm/s, and it cites the NASA report on the large-scale fabric fire flown on a spacecraft." |
-| 3:45-3:55 | Click **Plan**, then **Explore** and drag the gap cube (only if time) | "Habitat designers can enter their cabin atmosphere here. And in the cube, every test sits on the 0 g floor; the Moon and Mars slices are empty." |
-| 3:55-4:00 | Team slide | "Answers only from NASA data, every claim cited, and an honest 'we don't know' where NASA never looked. Thank you." |
+| (only if ahead of time) | Click **Plan**, then **Explore** and drag the gap cube | "Habitat designers can enter their cabin atmosphere here. And in the cube, every test sits on the 0 g floor; the Moon and Mars slices are empty." |
+| 3:45-3:55 | **Why it matters** slide | Impact, creativity, validity, relevance: one line each (see the slide notes). |
+| 3:55-4:00 | **Thank you / Questions?** slide | "Answers only from NASA data, every claim cited, and an honest 'we don't know' where NASA never looked. Thank you." |
+
+If behind: skip the helium question first, then cotton-fiberglass. Never skip the Moon question.
+
+For global submission upload `FlameCheck_Slides_global.pdf` (7 slides, the limit). The 8-slide deck with the Thank-you slide is for presenting.
 
 ## If a judge wants more
 
