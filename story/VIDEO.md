@@ -1,6 +1,6 @@
 # 30-second demo video
 
-Hard limit: 30 seconds, English subtitles (`subtitles.srt`). Record the live site at 1280×720. The score line uses the Gemini-mode eval (20/20, `eval/results.md`); re-run it if the code changes before recording.
+Hard limit: 30 seconds, English subtitles (`subtitles.srt`). Record the live site at 1280×720. The score line uses the eval with the live model, GPT-5.6-luna (20/20, `eval/results.md`); re-run it if the code changes before recording. Live answers take about 6–8 s, so trim the waits when editing.
 
 | Time | Screen | Voice-over (= subtitle) |
 | --- | --- | --- |
@@ -11,4 +11,4 @@ Hard limit: 30 seconds, English subtitles (`subtitles.srt`). Record the live sit
 | 20–26 s | Explore page, coverage map with the empty Moon-base box | Here's everything NASA tested, and the Moon-base gap. |
 | 26–30 s | About page, test-set score | Scored 20 of 20 on our test set. Every claim traces to NASA. |
 
-If the Gemini-mode score differs, change the last line and the subtitle to match.
+If that score differs, change the last line and the subtitle to match.

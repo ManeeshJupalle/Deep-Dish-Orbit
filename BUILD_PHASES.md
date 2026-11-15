@@ -71,7 +71,7 @@ Each phase has a prompt you can paste into Claude Code. Architecture details are
 - [ ] `investigations.json` from the PSI description pages (section 5.2)
 - [ ] Save each PSI description as text in `data/text/`; add 5–10 NTRS paper abstracts
 - [ ] `build_index.py` → `chunks.jsonl` + `embeddings.npy`
-- [ ] `pipeline/check_data.py`: no duplicate `test_id`, units in range (O₂ 0–100, pressure 0–200 kPa), every row has `source_url`
+- [ ] `pipeline/check_data.py`: no duplicate `test_id`, units in range (O₂ 0–100, pressure 0–350 kPa; FLEX ran up to 309 kPa), every row has `source_url`
 
 **Done when:** `check_data.py` passes and `tests.csv` has rows from at least 3 investigations.
 
@@ -89,7 +89,7 @@ Each phase has a prompt you can paste into Claude Code. Architecture details are
 
 - [ ] `api/data.py`: load CSV, JSON, chunks, embeddings once at startup
 - [ ] `GET /investigations`, `GET /tests` (filters), `GET /coverage`
-- [ ] `retrieve.py`: condition extraction (small Gemini call when no `conditions`), row scoring (section 7.1), top 8 tests + top 5 chunks
+- [ ] `retrieve.py`: condition extraction (plain rules, no LLM; see ARCHITECTURE.md 7.1), row scoring (section 7.1), top 8 tests + top 5 chunks
 - [ ] Bounding tests: best 0 g and best 1 g matches
 - [ ] Unit tests: 5 queries with known best matches
 
@@ -150,7 +150,7 @@ Each phase has a prompt you can paste into Claude Code. Architecture details are
 - [ ] Explore page: `CoverageMap` from `/coverage` (x = pressure kPa, y = O₂ %, colour = investigation)
 - [ ] Shade the Moon-base zone: O₂ ≥ 30%, pressure ≤ 70.3 kPa
 - [ ] `InvestigationCompare` table from `/investigations`
-- [ ] Deploy API (Cloud Run or Render) and web (Vercel); set env vars; check CORS
+- [ ] Deploy API (Azure App Service, Linux B1) and web (Azure Static Web Apps, static export); set app settings; check CORS
 - [ ] Open the live site signed out, ask 3 questions
 
 **Done when:** the live URL works on your phone.

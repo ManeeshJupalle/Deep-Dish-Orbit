@@ -2,7 +2,7 @@ import type { AskResponse } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const STYLE = {
-  high: "bg-zero-g text-white border-zero-g",
+  high: "bg-zero-g text-background border-zero-g",
   medium: "bg-card text-zero-g border-zero-g",
   low: "bg-card text-gap border-gap border-dashed",
 };

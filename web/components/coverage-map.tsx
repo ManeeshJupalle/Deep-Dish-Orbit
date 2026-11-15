@@ -14,17 +14,20 @@ import {
 
 import type { CoveragePoint } from "@/lib/types";
 
-// Categorical slots 1-3 of the validated palette (all-pairs safe for scatter).
-// Fixed per investigation, never by rank. Aqua is under 3:1 contrast, so the legend
-// and the table view below carry identity too.
+// Categorical slots 1-3 of the validated palette, dark-surface steps (all-pairs safe for scatter;
+// validated against the #0c1226 panel: CVD ΔE 9.4, all >= 3:1). Fixed per investigation, never by rank.
+// The legend and the table view below carry identity too.
 export const SERIES: Record<string, string> = {
-  FLEX: "#2a78d6",
-  "BASS-II": "#eb6834",
-  "SAFFIRE-II": "#1baf7a",
+  FLEX: "#3987e5",
+  "BASS-II": "#d95926",
+  "SAFFIRE-II": "#199e70",
 };
 const MOON_O2 = 30;
 const MOON_KPA = 70.3;
 const Y_DOMAIN: [number, number] = [10, 40];
+// FLEX ran nine droplet tests at about 2-3 atm (206-309 kPa), so the axis runs past 300.
+const X_DOMAIN: [number, number] = [0, 320];
+const X_TICKS = [0, 50, 100, 150, 200, 250, 300];
 
 type Point = CoveragePoint & { x: number; y: number };
 
@@ -36,7 +39,7 @@ function jitter(id: string) {
 
 function Dot(props: { cx?: number; cy?: number; fill?: string }) {
   const { cx = 0, cy = 0, fill } = props;
-  return <circle cx={cx} cy={cy} r={4} fill={fill} stroke="#ffffff" strokeWidth={1.5} />;
+  return <circle cx={cx} cy={cy} r={4} fill={fill} stroke="var(--card)" strokeWidth={1.5} />;
 }
 
 function Tip({ active, payload }: { active?: boolean; payload?: { payload: Point }[] }) {
@@ -48,12 +51,23 @@ function Tip({ active, payload }: { active?: boolean; payload?: { payload: Point
       <p className="text-muted-foreground">{p.investigation}</p>
       <p>O₂ {p.o2_pct}%</p>
       <p>{p.pressure_kpa === null ? "Pressure not reported" : `${p.pressure_kpa} kPa`}</p>
-      <p>{p.gravity_g === 1 ? "1 g" : "0 g"}</p>
+      <p>{p.gravity_g === null ? "Gravity not reported" : `${p.gravity_g} g`}</p>
     </div>
   );
 }
 
+// "Moon base" on wide charts, "Moon" on phones, where the box is narrower than the two words.
+function MoonLabel({ viewBox }: { viewBox?: { x?: number; y?: number } }) {
+  const { x = 0, y = 0 } = viewBox ?? {};
+  return (
+    <text x={x + 5} y={y + 15} fill="var(--ink)" fontSize={12}>
+      Moon<tspan className="max-sm:hidden"> base</tspan>
+    </text>
+  );
+}
+
 const axisTick = { fill: "var(--muted-foreground)", fontSize: 12 };
+const TOP = 22; // room above both plots for the "1 atm" label
 
 export function CoverageMap({ points }: { points: CoveragePoint[] }) {
   const both = points.filter((p) => p.o2_pct !== null && p.pressure_kpa !== null);
@@ -92,7 +106,7 @@ export function CoverageMap({ points }: { points: CoveragePoint[] }) {
       <div className="flex rounded-lg border border-border bg-card p-2">
         <div className="w-28 shrink-0 sm:w-36" aria-label="Tests with oxygen but no reported pressure">
           <ResponsiveContainer width="100%" height={360}>
-            <ScatterChart margin={{ top: 10, right: 4, bottom: 30, left: 0 }}>
+            <ScatterChart margin={{ top: TOP, right: 4, bottom: 30, left: 0 }}>
               <CartesianGrid stroke="var(--border)" vertical={false} />
               <XAxis
                 type="number"
@@ -127,7 +141,7 @@ export function CoverageMap({ points }: { points: CoveragePoint[] }) {
 
         <div className="min-w-0 flex-1" aria-label="Tests by oxygen and pressure">
           <ResponsiveContainer width="100%" height={360}>
-            <ScatterChart margin={{ top: 10, right: 16, bottom: 30, left: 0 }}>
+            <ScatterChart margin={{ top: TOP, right: 16, bottom: 30, left: 0 }}>
               <CartesianGrid stroke="var(--border)" />
               <ReferenceArea
                 x1={0}
@@ -139,19 +153,19 @@ export function CoverageMap({ points }: { points: CoveragePoint[] }) {
                 stroke="var(--gap)"
                 strokeDasharray="6 5"
                 strokeWidth={1.5}
-                label={{ value: "Moon base", position: "insideTopLeft", fill: "var(--ink)", fontSize: 12 }}
+                label={MoonLabel}
               />
               <ReferenceLine
                 x={101.3}
                 stroke="var(--muted-foreground)"
                 strokeDasharray="2 4"
-                label={{ value: "1 atm", position: "insideTopRight", fill: "var(--muted-foreground)", fontSize: 11 }}
+                label={{ value: "1 atm", position: "top", fill: "var(--muted-foreground)", fontSize: 11 }}
               />
               <XAxis
                 type="number"
                 dataKey="x"
-                domain={[0, 120]}
-                ticks={[0, 20, 40, 60, 80, 100, 120]}
+                domain={X_DOMAIN}
+                ticks={X_TICKS}
                 tick={axisTick}
                 tickLine={false}
                 axisLine={{ stroke: "var(--border)" }}

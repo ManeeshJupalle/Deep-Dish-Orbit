@@ -34,7 +34,7 @@ flowchart LR
     WEB[Web app Next.js] -->|POST /ask| API[FastAPI]
     API --> RET[retrieve.py]
     STORE --> RET
-    RET --> ANS[answer.py Gemini, evidence only]
+    RET --> ANS[answer.py LLM, evidence only]
     ANS --> VER[verify.py drops unbacked claims]
     VER -->|cited answer or no direct data| WEB
   end
@@ -54,7 +54,7 @@ A rendered copy is in `FlameCheck_Architecture.png`.
 | Indexer | `pipeline/build_index.py` | Split text into chunks, make embeddings |
 | API | `api/main.py` | HTTP endpoints, CORS, error handling |
 | Retriever | `api/retrieve.py` | Find the tests and text closest to the question |
-| Answer engine | `api/answer.py` | Ask Gemini for a JSON answer from evidence only |
+| Answer engine | `api/answer.py`, `api/llm.py` | Ask the drafting model for a JSON answer from evidence only |
 | Verifier | `api/verify.py` | Check every citation and number; decide "no direct data" |
 | Trust scorer | `api/trust.py` | High / Medium / Low badge |
 | Web app | `web/` | Ask screen, Explore screen, coverage map |
@@ -68,13 +68,13 @@ One team, one shared chat: everything above is built in a single track, in phase
 
 | Layer | Choice | Why |
 | --- | --- | --- |
-| Data | Python 3.11, pandas | Fast to clean messy tables |
+| Data | Python 3.11 (standard `csv` module) | The tables are small; no extra library needed |
 | API | FastAPI + Pydantic | Typed request/response, auto docs at `/docs` |
-| LLM | Gemini 3.5 Flash-Lite (fallback 3.1 Flash-Lite), free tier | Fast (~1 s); full Flash models were overloaded on the free tier. AI Studio rejected the event credit's billing account type |
-| Embeddings | Gemini embeddings, stored in `embeddings.npy` | No vector DB needed for < 5,000 chunks |
+| LLM | Azure OpenAI GPT-5.6-luna, keyless (managed identity). Fallback: Gemini 3.5 Flash-Lite, then 3.1 Flash-Lite, free tier | Chosen by measurement on the 20-question test set: as faithful as the best model, about twice as fast as GPT-5-mini, cheapest per answer of the paid models (README, "Which model and why") |
+| Embeddings | Gemini `gemini-embedding-001`, stored in `embeddings.npy` | No vector DB needed for < 5,000 chunks |
 | Web | Next.js (App Router) + Tailwind + shadcn/ui | Fast, polished UI |
 | Charts | Recharts | Coverage map scatter plot |
-| Hosting | Vercel (web), Google Cloud Run or Render (API) | Free tier, quick deploy |
+| Hosting | Microsoft Azure: Static Web Apps, Free tier (web, static export in `web/out`); App Service, Linux, Python 3.11, plan B1 with Always On, East US (API) | The API's managed identity calls Azure OpenAI with no stored key |
 
 ---
 
@@ -129,7 +129,7 @@ Every cleaner also writes its raw-column → schema mapping to `data/clean/MAPPI
 
 ### 5.3 `chunks.jsonl` — text for the AI to search
 
-One JSON object per line: `chunk_id`, `source_id` (investigation id or NTRS paper id), `title`, `text` (300–500 words), `source_url`.
+One JSON object per line: `chunk_id`, `source_id` (investigation id or NTRS paper id), `title`, `text` (up to 500 words; shorter NASA abstracts are kept whole, never padded), `source_url`.
 
 `embeddings.npy` stores one vector per chunk, in the same order as `chunks.jsonl`.
 
@@ -156,7 +156,7 @@ Freeze this in Phase 1 so the web app can be built against sample responses (`we
 }
 ```
 
-`conditions` is optional. `gravity` is one of `micro`, `moon`, `mars`, `earth`.
+`conditions` is optional. `gravity` is one of `micro`, `moon`, `mars`, `partial`, `earth` (`partial` = any other gravity between 0 g and 1 g).
 
 **Response**
 
@@ -213,7 +213,7 @@ sequenceDiagram
   participant U as Web app
   participant A as FastAPI /ask
   participant R as retrieve.py
-  participant G as answer.py (Gemini)
+  participant G as answer.py (LLM)
   participant V as verify.py
   U->>A: question + conditions
   A->>R: parse conditions, search
@@ -229,18 +229,24 @@ sequenceDiagram
 
 Two lanes, merged:
 
-1. **Structured lane (tests).** Conditions typed in the form win; anything missing is parsed from the question with plain rules (material families, `N%` oxygen, pressure in kPa/psi/atm/mmHg/bar, `cm/s`, Moon/Mars/ISS/Earth words). No LLM is used here, so a condition can only come from words the user typed. Named investigations (e.g. "FLEX") filter the rows; named diluents (helium, CO₂, N₂) add a scoring term. Score every row in `tests.csv`:
+1. **Structured lane (tests).** Conditions typed in the form win; anything missing is parsed from the question with plain rules (material families, `N%` oxygen, pressure in kPa/psi/atm/mmHg/bar, `cm/s`, Moon/Mars/ISS/Earth words). Partial gravity is recognised from words ("lunar", "moonbase", "partial gravity") and from numbers ("1/6 g", "0.38 g", any decimal below 1 g); none of it has PSI data. A list of common materials NASA PSI did not test here (wood, Kapton, nylon, ...) turns into a "No PSI test for ..." gap instead of an answer about another material. No LLM is used here, so a condition can only come from words the user typed. Named investigations (e.g. "FLEX") filter the rows; named diluents (helium, CO₂, N₂) add a scoring term. "FLEX-2" is a different investigation with no table loaded, so it never selects FLEX rows (only "test FLEX-2" means the row). Score every row in `tests.csv`:
    - material match (same family, e.g. SIBAL = cotton, BASS-II rods = PMMA) → biggest weight; when the material has tests, only those rows are candidates
    - closeness in O₂, pressure, flow → smaller weights, normalized 0–1
    - rows missing a value get no credit for that field (never assumed)
    - keep the top 8 as `evidence`
-2. **Text lane (chunks).** Embed the question, cosine-similarity against `embeddings.npy`, keep the top 5 chunks. If embeddings or the Gemini key are missing, rank chunks by keyword overlap instead.
+2. **Text lane (chunks).** Embed the question, cosine-similarity against `embeddings.npy`, keep the top 5 chunks. The question is embedded with Gemini `gemini-embedding-001`, because `embeddings.npy` was built with it. If embeddings or the Gemini key are missing, rank chunks by keyword overlap instead (the case on Azure right now, where no Gemini key is set).
 
-Also always return **bounding tests**: the best 0 g matches and best 1 g matches, used when the user asks about Moon or Mars gravity. `gaps` are computed from the data here too (e.g. "No cotton test at or above 34% O2 (highest tested: 22.1%)"), not written by the LLM.
+Also always return **bounding tests**: the best 0 g matches and best 1 g matches, used when the user asks about Moon or Mars gravity. For a partial-gravity question, if nothing else in the question matches a row at one of the two levels, the bound falls back to rows with a recorded outcome (match score 0), so the bounds are never empty while data exists.
+
+`gaps` are computed from the data here too (e.g. "No cotton test at or above 34% O2 (highest tested: 22.1%)"), not written by the LLM. They are worked out on the rows at the asked gravity and name the investigation when one was asked about ("No FLEX test for cotton (tested in BASS-II, SAFFIRE-II, SAFFIRE-III)", "No 1 g PMMA test reports an oxygen level", "No 0 g PMMA test with He as the diluent"). If no single row is at all the asked conditions together (material, O₂ within 3 points, pressure within 10 kPa, gravity, diluent), that is a gap too.
 
 ### 7.2 Answer (`answer.py`)
 
-- Model: Gemini Flash, temperature 0, JSON output only.
+- Model (`api/llm.py`), tried in this order:
+  1. Azure OpenAI, when `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_DEPLOYMENT` are set. The live deployment is GPT-5.6-luna. GPT-5 models accept only the default temperature, so they run with low reasoning effort; other Azure models run at temperature 0.
+  2. If Azure OpenAI fails (timeout, throttling, error) and `GEMINI_API_KEY` is set, each model in `GEMINI_MODEL` in turn (default `gemini-3.5-flash-lite`, then `gemini-3.1-flash-lite`), at temperature 0.
+- JSON output only.
+- Auth is keyless. `DefaultAzureCredential` uses the App Service's system-assigned managed identity, which has the "Cognitive Services OpenAI User" role on the Azure OpenAI resource (`flamecheck-ai`, East US). Locally it uses `az login`. No model key is stored anywhere.
 - Input: the question, the evidence rows (as a compact table), the text chunks with ids.
 - Prompt rules (keep in `api/prompts/answer.md`):
   - Use only the evidence given. No outside knowledge.
@@ -248,21 +254,21 @@ Also always return **bounding tests**: the best 0 g matches and best 1 g matches
   - Copy numbers exactly from evidence; no rounding beyond one decimal.
   - If gravity asked is Moon or Mars, say there is no direct PSI data and describe the 0 g and 1 g bounds.
   - If nothing matches, return no claims.
-- If Gemini is unavailable, or no surviving claim cites a test at the asked conditions, `answer.template()` restates the top evidence rows as claims ("At 0 g, BASS-II test BASS2-B1 (…) was extinguished at 21% O2."). These go through `verify.py` like any other draft. Requests time out after 20 s and fall through the model list in `GEMINI_MODEL`.
+- If no model answers, or no surviving claim cites a test at the asked conditions, `answer.template()` restates the top evidence rows as claims ("At 0 g, BASS-II test BASS2-B1 (…) was extinguished at 21% O2."). These go through `verify.py` like any other draft. Each request times out after 20 s and falls through to the next model.
 
 ### 7.3 Verification (`verify.py`) — the core of the project
 
 For each claim:
 
 1. Every id in `cites` must exist in the evidence or chunks sent. Unknown id → drop claim.
-2. Every number in the claim text must appear in a cited row or chunk (allow rounding to 1 decimal). Not found → drop claim.
-3. A claim about Moon/Mars behavior that cites only 0 g or 1 g data must be phrased as a bound ("at 0 g…", "at 1 g…"). Otherwise → drop claim.
-4. Outcome words ("burned", "ignited", "extinguished", "did not ignite") must match the `outcome` column of the cited tests; measurement phrases like "burning rate" don't count. An empty outcome backs no outcome word. Otherwise → drop claim.
+2. Every number in the claim text must appear in a cited row or chunk (allow rounding to 1 decimal). Only the columns sent to the model count: file names, PSI ids and NASA's own test identifiers (e.g. `20CAL08`) are not data. Numbers written without a leading zero (".75") are checked too. Not found → drop claim.
+3. A claim about Moon/Mars behavior that cites only 0 g or 1 g data must be phrased as a bound ("at 0 g…", "at 1 g…"). This applies when the question is about partial gravity and also when the claim itself mentions the Moon or Mars. Otherwise → drop claim.
+4. Outcome words ("burned", "ignited", "extinguished", "did not ignite", and negations such as "did not burn" or "never ignited", which need a `no_ignition` row) must match the `outcome` column of the cited tests; measurement phrases like "burning rate" don't count. An empty outcome backs no outcome word. Otherwise → drop claim.
 
 Then decide the status:
 
 - Rockets/propellants → `out_of_scope` (the LLM is not called)
-- Moon/Mars gravity, a data gap at the asked conditions, or 0 claims left → `no_direct_data`
+- Moon/Mars or any other partial gravity, a data gap at the asked conditions (section 7.1), or 0 claims left → `no_direct_data`
 - otherwise (≥1 claim at matching conditions) → `answered`
 
 The summary is checked too: every number in it must come from the evidence, the gaps or the question, and its outcome words must match the cited tests (rule 4), or it is replaced. If any drafted claim was dropped, the model's summary is not shown; a plain note says statements were removed. For `no_direct_data` and `out_of_scope` the summary is fixed text, so the "no direct data" message never depends on the LLM.
@@ -273,7 +279,7 @@ Log every dropped claim and why (`logs/verify.jsonl`). This is great material fo
 
 | Level | Rule |
 | --- | --- |
-| High | 3+ verified tests with a recorded outcome, same material family, O₂ within 3 points, same gravity |
+| High | 3+ verified tests with a recorded outcome at the asked conditions: same material family (the question must name a material, investigation or test we recognise), O₂ within 3 points, pressure within 10 kPa, same gravity, same diluent when one is asked |
 | Medium | 1–2 verified tests, or conditions near but not matching |
 | Low | Only bounding tests (e.g. Moon question), or only text evidence |
 
@@ -306,12 +312,15 @@ Always show the `reason` next to the badge.
 
 | Variable | Where | Example |
 | --- | --- | --- |
-| `GEMINI_API_KEY` | API only (never the web app) | from Google AI Studio |
-| `GEMINI_MODEL` | API | a Gemini Flash model name |
-| `ALLOWED_ORIGINS` | API | `http://localhost:3000,https://<your-vercel-app>` |
-| `NEXT_PUBLIC_API_URL` | Web | `http://localhost:8000` |
+| `AZURE_OPENAI_ENDPOINT` | API | endpoint of the Azure OpenAI resource `flamecheck-ai` |
+| `AZURE_OPENAI_DEPLOYMENT` | API | `gpt-5.6-luna` |
+| `GEMINI_API_KEY` | API only (never the web app), optional | from Google AI Studio; fallback drafting and search embeddings. Not set on Azure right now |
+| `GEMINI_MODEL` | API, optional | comma-separated Gemini models; default `gemini-3.5-flash-lite,gemini-3.1-flash-lite` |
+| `ALLOWED_ORIGINS` | API | `http://localhost:3000,https://thankful-forest-0ab84ba0f.3.azurestaticapps.net` |
+| `SCM_DO_BUILD_DURING_DEPLOYMENT` | API on Azure App Service | `true` (Azure installs `requirements.txt`) |
+| `NEXT_PUBLIC_API_URL` | Web, set before `npm run build` | `http://localhost:8000` or `https://flamecheck-api.azurewebsites.net` |
 
-Keep secrets in `.env` (git-ignored). Commit `.env.example` with empty values.
+Keep secrets in `.env` (git-ignored). Commit `.env.example` with empty values. Azure OpenAI needs no key: the API signs in with the App Service's managed identity, or with `az login` locally.
 
 ---
 
@@ -365,5 +374,5 @@ Text sources: each investigation's PSI description page, plus NASA papers found 
 
 - Public final-project link (GitHub repo or site), no login.
 - Demo: video ≤ 30 seconds with English subtitles, **or** ≤ 7 slides.
-- Fields: summary, description, NASA data used, other data, **AI use** (we use Claude Code and Gemini — disclose both).
+- Fields: summary, description, NASA data used, other data, **AI use** (we use Claude Code, Azure OpenAI and Gemini — disclose all three).
 - No NASA logos. AI-made images or video need a visible watermark.

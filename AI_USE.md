@@ -4,9 +4,10 @@ Space Apps asks every team to say which AI tools they used and how.
 
 ## In the product
 
-- **Google Gemini** (`gemini-3.5-flash-lite`, with `gemini-3.1-flash-lite` as backup, via the Gemini API free tier) drafts answers from the retrieved NASA evidence only, at temperature 0, as JSON. `gemini-embedding-001` embeds the NASA text for search.
-- Gemini output is never shown as-is. `api/verify.py` drops any claim that cites an unknown id, contains a number that is not in the cited NASA row or document, states an outcome ("burned", "extinguished") the cited test doesn't record, or describes Moon/Mars behavior without stating it as a 0 g or 1 g bound. If any claim is dropped, the model's summary is replaced by a plain note. The "no direct data" message is fixed text, not model output.
-- Without a Gemini key, FlameCheck runs in evidence-only mode: it restates the closest NASA test rows, checked by the same verifier.
+- **Azure OpenAI GPT-5.6-luna** drafts the live answers from the retrieved NASA evidence only, as JSON. It runs keyless: the API's Azure managed identity has access to the model, so no model key is stored. We picked it after running the 20-question test set with six models (see the README, "Which model and why").
+- **Google Gemini** (`gemini-3.5-flash-lite`, then `gemini-3.1-flash-lite`, via the Gemini API free tier) is the fallback drafter, used if Azure OpenAI fails and a Gemini key is set. `gemini-embedding-001` embeds the NASA text for search. Without a Gemini key, search uses keywords instead.
+- Model output is never shown as-is. `api/verify.py` drops any claim that cites an unknown id, contains a number that is not in the cited NASA row or document, states an outcome ("burned", "extinguished") the cited test doesn't record, or describes Moon/Mars behavior without stating it as a 0 g or 1 g bound. If any claim is dropped, the model's summary is replaced by a plain note. The "no direct data" message is fixed text, not model output.
+- With no drafting model available, FlameCheck runs in evidence-only mode: it restates the closest NASA test rows, checked by the same verifier.
 
 ## In building it
 

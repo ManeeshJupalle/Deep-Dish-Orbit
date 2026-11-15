@@ -11,7 +11,7 @@ const SOURCES = [
 
 const STEPS = [
   { title: "Find the closest tests", body: "Your material, oxygen, pressure and gravity are matched against 423 NASA test rows. Missing values never earn credit." },
-  { title: "Draft from evidence only", body: "Gemini writes short claims using only those rows and NASA text, each citing a test or document id." },
+  { title: "Draft from evidence only", body: "GPT-5.6-luna (Azure OpenAI) writes short claims using only those rows and NASA text, each citing a test or document id." },
   { title: "Verify every claim", body: "Any claim with an unknown citation, a number not in the cited row, an outcome (\"burned\") the cited test doesn't record, or a Moon/Mars claim not stated as a 0 g or 1 g bound is dropped before you see it." },
   { title: "Answer, or say no direct data", body: "If nothing survives, or NASA never tested your conditions, FlameCheck says so and shows the tests that bound the answer." },
 ];
@@ -51,8 +51,10 @@ export default function AboutPage() {
           20 questions written from the data: 6 lookups, 5 comparisons, 4 suppression questions and 5 questions NASA has
           no data for. Each is scored on the right status, real citations, the required tests cited, and no invented
           values. The first run scored <strong>17 of 20</strong>. After fixing the three failures, FlameCheck scores{" "}
-          <strong>20 of 20</strong> with Gemini drafting the answers, and 20 of 20 without it. During that run the
-          verifier removed 6 drafted claims that NASA&apos;s data did not back.
+          <strong>20 of 20</strong> with GPT-5.6-luna drafting the answers, and 20 of 20 without a model. Six models
+          all scored 20 of 20 on the same questions, because the verifier removed the drafted claims NASA&apos;s data
+          did not back (5 for GPT-5.6-luna, 16 for GPT-4.1-mini); GPT-5.6-luna was about twice as fast as GPT-5-mini
+          and the cheapest of the paid models.
         </p>
       </section>
 
@@ -84,9 +86,9 @@ export default function AboutPage() {
       <section aria-labelledby="ai" className="space-y-3">
         <h2 id="ai" className="text-xl font-bold tracking-tight">Use of AI</h2>
         <p className="leading-relaxed">
-          Google Gemini drafts the answers and embeds the NASA text for search. Claude Code helped write the code, the
-          data pipeline and this site. The data checks, the verifier and the test set are there so neither model is
-          trusted on its own.
+          GPT-5.6-luna on Azure OpenAI drafts the answers. Google Gemini is the fallback drafter and embeds the NASA
+          text for search. Claude Code helped write the code, the data pipeline and this site. The data checks, the
+          verifier and the test set are there so no model is trusted on its own.
         </p>
       </section>
 

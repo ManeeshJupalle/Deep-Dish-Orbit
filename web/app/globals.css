@@ -53,29 +53,30 @@
 }
 
 :root {
-  /* FlameCheck palette: microgravity flames burn blue and round, Earth flames amber.
-     Blue marks 0 g evidence, amber 1 g evidence, dashed slate marks "no data". */
-  --zero-g: #2f5bea;
-  --one-g: #c77d1a;
-  --gap: #5b6474;
-  --ink: #14213d;
-  --background: #f4f6f9;
+  /* FlameCheck palette, seen from orbit: microgravity flames burn blue and round, Earth flames amber.
+     Blue marks 0 g evidence, amber 1 g evidence, dashed slate marks "no data". Deep-space navy surfaces. */
+  color-scheme: dark;
+  --zero-g: #7d98ff;
+  --one-g: #f2a541;
+  --gap: #8e98ae;
+  --ink: #e8edf7;
+  --background: #050916;
   --foreground: var(--ink);
-  --card: #ffffff;
+  --card: #0c1226;
   --card-foreground: var(--ink);
-  --popover: #ffffff;
+  --popover: #0f1630;
   --popover-foreground: var(--ink);
   --primary: var(--zero-g);
-  --primary-foreground: #ffffff;
-  --secondary: #e7ecf4;
+  --primary-foreground: #050916;
+  --secondary: #151e3a;
   --secondary-foreground: var(--ink);
-  --muted: #e9edf3;
-  --muted-foreground: #4f5a6e;
-  --accent: #e3eafc;
+  --muted: #121a34;
+  --muted-foreground: #a3aec6;
+  --accent: #1a2550;
   --accent-foreground: var(--ink);
-  --destructive: #b42318;
-  --border: #d5dbe5;
-  --input: #c3cbd8;
+  --destructive: #ff7a6b;
+  --border: #243152;
+  --input: #2e3c63;
   --ring: var(--zero-g);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -149,9 +150,26 @@
 
 /* Evidence row highlighted after a citation chip is clicked */
 @keyframes cite-flash {
-  from { background-color: color-mix(in oklab, var(--zero-g) 22%, transparent); }
+  from { background-color: color-mix(in oklab, var(--zero-g) 30%, transparent); }
   to { background-color: transparent; }
 }
 .cite-flash {
   animation: cite-flash 1.6s ease-out;
+}
+
+/* Faint nebula light behind the starfield: blue where the 0 g flame sits, amber low on the horizon. */
+body {
+  background-image:
+    radial-gradient(ellipse 60% 45% at 85% 8%, color-mix(in oklab, var(--zero-g) 14%, transparent), transparent 70%),
+    radial-gradient(ellipse 70% 40% at 10% 105%, color-mix(in oklab, var(--one-g) 9%, transparent), transparent 70%);
+  background-attachment: fixed;
+}
+
+/* Verified claims arrive one at a time, each with its citation. */
+@keyframes claim-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.claim-in {
+  animation: claim-in 0.45s ease-out both;
 }

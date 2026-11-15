@@ -40,7 +40,7 @@ function CitationChip({ id, evidenceIds, chunks }: { id: string; evidenceIds: Se
       <button
         type="button"
         onClick={() => flash(id)}
-        className={cn(chip, "border-zero-g/40 bg-accent text-zero-g hover:bg-zero-g hover:text-white focus-visible:outline-2 focus-visible:outline-ring")}
+        className={cn(chip, "border-zero-g/40 bg-accent text-zero-g hover:bg-zero-g hover:text-background focus-visible:outline-2 focus-visible:outline-ring")}
         aria-label={`Show test ${id} in the evidence table`}
       >
         {id}
@@ -122,7 +122,7 @@ export function AnswerCard({ data, chunks }: { data: AskResponse; chunks: Map<st
         {data.claims.length > 0 && (
           <ul className="mt-4 space-y-2.5 border-t border-border pt-4">
             {data.claims.map((c, i) => (
-              <li key={i} className="max-w-prose leading-relaxed">
+              <li key={i} className="claim-in max-w-prose leading-relaxed" style={{ animationDelay: `${150 + i * 140}ms` }}>
                 {c.text}{" "}
                 <span className="inline-flex flex-wrap gap-1">
                   {c.cites.map((id) => (
