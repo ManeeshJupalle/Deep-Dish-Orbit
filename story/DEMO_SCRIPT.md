@@ -5,7 +5,7 @@ everything is warm. Answers take 3-8 s; talk while they load.
 
 ## Slides (about 2:00)
 
-Title (0:10) → Problem (0:25) → Solution (0:25) → How it stays honest (0:30) → Results (0:30).
+Title (0:10) → Problem (0:25) → Solution (0:25) → How it stays honest (0:30) → Tech stack (0:30).
 The speaker notes in the deck carry the words.
 
 ## Demo (about 1:50)
