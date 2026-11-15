@@ -135,6 +135,12 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Windows Chrome draws the dropdown list itself in white but keeps the select's light text,
+     so options get explicit dark colors. */
+  select option {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
   html {
     @apply font-sans;
     font-feature-settings: "tnum" 1;
