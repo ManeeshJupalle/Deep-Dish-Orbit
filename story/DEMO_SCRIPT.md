@@ -10,13 +10,11 @@ The speaker notes in the deck carry the words.
 
 ## Demo (about 1:50)
 
-| Time | Do | Say |
-| --- | --- | --- |
-| 2:00-2:15 | Home page, point at the 3D flames | "In orbit a flame is a round blue ball, on Earth a teardrop. On the Moon nobody knows: NASA never tested fire at lunar gravity." |
 All four questions are one-click buttons under "Try one of these" on the Ask page.
 
 | Time | Do | Say |
 | --- | --- | --- |
+| 2:00-2:15 | Home page, point at the 3D flames | "In orbit a flame is a round blue ball, on Earth a teardrop. On the Moon nobody knows: NASA never tested fire at lunar gravity." |
 | 2:15-2:35 | Ask **"Does PMMA burn at 21% oxygen in microgravity?"**, click a blue citation chip | "Every sentence cites a real NASA test. Click one and the exact evidence row lights up, with a link to NASA's page." |
 | 2:35-2:55 | Open **Watch the verifier work** under the answer | "This is what the AI drafted and our verifier removed, with the reason. If nothing was removed, it says every claim was checked." (Either result makes the point.) |
 | 2:55-3:15 | Ask **"Is cotton safe at 34% oxygen on the Moon?"** | "It refuses to guess. *No direct data*, the closest 0 g and 1 g tests as bounds, and exactly what NASA never tested: no cotton test above 22% oxygen." |
